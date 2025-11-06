@@ -677,4 +677,3 @@ class CalendarEngine:
         except Exception as e:
             print(f"❌ Ошибка при AI-декомпозиции задач: {e}")
             return []
-        }
