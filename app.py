@@ -429,12 +429,13 @@ else:
                 st.markdown("---")
                 st.markdown("#### Тренажер: Бесконечный Монолог")
                 st.caption("Нажмите на иконку микрофона, чтобы записать монолог на 1-3 минуты на любую тему. Затем прослушайте запись и проведите аудит своей речи.")
-                
-                wav_audio_data = st_audiorec()
 
-                if wav_audio_data is not None:
-                    st.audio(wav_audio_data, format='audio/wav')
-                    st.text_area("Аудит Слов-Паразитов (выпишите все, что заметили)", key="parasite_audit")
+                # --- ИСПРАВЛЕНИЕ: Изолируем компонент в контейнер для стабильности ---
+                with st.container():
+                    wav_audio_data = st_audiorec()
+                    if wav_audio_data is not None:
+                        st.audio(wav_audio_data, format='audio/wav')
+                        st.text_area("Аудит Слов-Паразитов (выпишите все, что заметили)", key="parasite_audit_area")
 
             # --- Модуль 4: Матрица Компетенций ---
             with st.expander("Блок 4: Матрица Компетенций"):
