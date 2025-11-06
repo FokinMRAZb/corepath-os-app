@@ -285,6 +285,7 @@ def render_main_workspace():
 
         # --- Блок редактирования ---
         with st.expander("Редактировать Профиль"):
+            st.info("Функционал редактирования находится в разработке.")
         
 # --- ГЛАВНЫЙ РОУТЕР ПРИЛОЖЕНИЯ ---
 if st.session_state.processing:
