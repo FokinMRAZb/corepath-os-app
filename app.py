@@ -112,78 +112,81 @@ if 'processing' not in st.session_state:
 
 # --- УЛУЧШЕНИЕ: ЛОГИКА ОТОБРАЖЕНИЯ СТАРТОВОГО ЭКРАНА ИЛИ РАБОЧЕГО ПРОСТРАНСТВА ---
 
-if not st.session_state.profile_generated:
-    # --- ЭТАП 1: СТАРТОВЫЙ ЭКРАН ДИАГНОСТИКИ ---
-    with st.expander("🚀 Диагностика", expanded=True): # Ракета
-        api_key = st.text_input("🔑 Ваш Gemini API Ключ", type="password", help="Ваш ключ будет использован только для этой сессии и нигде не сохраняется.", key="api_key_input")
+def run_full_diagnostic():
+    """Основная функция, запускающая весь конвейер анализа."""
+    st.session_state.processing = True
+    st.rerun()
 
-        # --- УЛУЧШЕНИЕ: Выбор режима ввода ---
+def render_startup_screen():
+    """Отрисовывает стартовый экран, если профиль не создан."""
+    with st.expander("🚀 Диагностика", expanded=True):
+        api_key = st.text_input("🔑 Ваш Gemini API Ключ", type="password", help="Ваш ключ будет использован только для этой сессии и нигде не сохраняется.", key="api_key_input", disabled=st.session_state.processing)
         input_mode_tab1, input_mode_tab2 = st.tabs(["Интерактивный Опрос", "Быстрый Ввод (для опытных)"])
 
         with input_mode_tab1:
             st.markdown("Отвечайте на вопросы в диалоге с AI-ассистентом для максимальной глубины.")
-        
-        # --- РЕАЛИЗАЦИЯ ИНТЕРАКТИВНОГО ОПРОСА ---
-        all_questions = [(k, v) for block in QUESTIONNAIRE_QUESTIONS.values() for k, v in block.items()]
-        
-        # --- УЛУЧШЕНИЕ: Динамическое раскрытие первого блока ---
-        if st.session_state.current_q_index < len(all_questions): # Проверяем, не закончен ли опрос
-            q_key, q_text = all_questions[st.session_state.current_q_index]
+            all_questions = [(k, v) for block in QUESTIONNAIRE_QUESTIONS.values() for k, v in block.items()]
+            
+            if st.session_state.current_q_index < len(all_questions):
+                q_key, q_text = all_questions[st.session_state.current_q_index]
+                st.subheader(f"Вопрос {st.session_state.current_q_index + 1} / {len(all_questions)}")
+                st.markdown(f"**{q_text}**")
 
-            st.subheader(f"Вопрос {st.session_state.current_q_index + 1} / {len(all_questions)}")
-            st.markdown(f"**{q_text}**")
+                for speaker, text in st.session_state.current_conversation:
+                    st.chat_message(speaker).write(text)
 
-            # Отображение истории текущего диалога
-            for i, (speaker, text) in enumerate(st.session_state.current_conversation):
-                if speaker == "user":
-                    st.chat_message("user").write(text)
-                else:
-                    st.chat_message("assistant").write(text)
-
-            # Поле для ответа
-            user_answer = st.text_area("Ваш ответ:", key=f"interview_input_{q_key}", height=150, disabled=st.session_state.processing)
-
-            if st.button("💬 Ответить", key=f"submit_{q_key}", disabled=st.session_state.processing):
-                if user_answer:
-                    # Добавляем ответ пользователя в диалог
-                    st.session_state.current_conversation.append(("user", user_answer))
-                    
-                    # Генерируем уточняющий вопрос
-                    interview_engine = InterviewEngine(api_key=st.session_state.api_key_input)
-                    conversation_str = "\n".join([f"{s}: {t}" for s, t in st.session_state.current_conversation])
-                    follow_up = interview_engine.get_follow_up_question(q_text, conversation_str)
-                    
-                    if follow_up:
-                        st.session_state.current_conversation.append(("ai", follow_up))
-                    
-                    st.rerun()
-
-            if st.button("✅ Завершить и перейти к следующему вопросу", type="primary", disabled=st.session_state.processing):
-                # Сохраняем весь диалог как ответ на основной вопрос
-                final_answer_text = "\n".join([f"Пользователь: {t}" if s == "user" else f"AI-Ассистент: {t}" for s, t in st.session_state.current_conversation])
-                st.session_state.interview_answers[q_key] = final_answer_text
+                user_answer = st.text_area("Ваш ответ:", key=f"interview_input_{q_key}", height=150, disabled=st.session_state.processing)
                 
-                # Сбрасываем и переходим к следующему
-                st.session_state.current_conversation = []
-                st.session_state.current_q_index += 1
-                st.rerun()
-        else:
-            st.success("🎉 Опрос завершен! Все ответы собраны.")
-            st.info("Теперь вы можете запустить полную диагностику на основе ваших развернутых ответов.")
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("💬 Ответить", key=f"submit_{q_key}", disabled=st.session_state.processing, use_container_width=True):
+                        if user_answer:
+                            st.session_state.current_conversation.append(("user", user_answer))
+                            interview_engine = InterviewEngine(api_key=st.session_state.api_key_input)
+                            conversation_str = "\n".join([f"{s}: {t}" for s, t in st.session_state.current_conversation])
+                            follow_up = interview_engine.get_follow_up_question(q_text, conversation_str)
+                            if follow_up:
+                                st.session_state.current_conversation.append(("ai", follow_up))
+                            st.rerun()
+                with col2:
+                    if st.button("✅ Завершить и перейти к следующему", type="primary", disabled=st.session_state.processing, use_container_width=True):
+                        final_answer_text = "\n".join([f"{s.capitalize()}: {t}" for s, t in st.session_state.current_conversation])
+                        st.session_state.interview_answers[q_key] = final_answer_text
+                        st.session_state.current_conversation = []
+                        st.session_state.current_q_index += 1
+                        st.rerun()
+            else:
+                st.success("🎉 Опрос завершен! Все ответы собраны.")
+                st.info("Теперь вы можете запустить полную диагностику.")
 
-        run_from_questionnaire = st.button("🚀 Запустить Диагностику по ответам", disabled=(st.session_state.current_q_index < len(all_questions) or st.session_state.processing))
+            if st.button("🚀 Запустить Диагностику по ответам", disabled=(st.session_state.current_q_index < len(all_questions) or st.session_state.processing), on_click=run_full_diagnostic, type="primary"):
+                # Логика запуска перенесена в on_click
+                pass
 
         with input_mode_tab2:
-            raw_text_area = st.text_area("Шаг 1: Вставьте Единый Контекст", height=250, key="raw_text", placeholder="Вставьте сюда весь текст из опросника, включая информацию о себе и о конкурентах...", disabled=st.session_state.processing)
-            run_from_text = st.button("🚀 Запустить Диагностику и Проектирование", disabled=st.session_state.processing)
+            st.session_state.raw_text = st.text_area("Шаг 1: Вставьте Единый Контекст", height=250, key="raw_text_area", placeholder="Вставьте сюда весь текст из опросника...", disabled=st.session_state.processing)
+            if st.button("🚀 Запустить Диагностику и Проектирование", disabled=st.session_state.processing, on_click=run_full_diagnostic):
+                # Логика запуска перенесена в on_click
+                pass
 
-    if run_from_questionnaire or run_from_text:
-            st.session_state.processing = True
-            # --- УЛУЧШЕНИЕ: Поэтапный индикатор процесса ---
-            with st.status("Запускаю полный цикл диагностики F.O.K.I.N...", expanded=True) as status:
+    uploaded_file = st.file_uploader("...или загрузите существующий профиль", type=["json"], disabled=st.session_state.processing)
+    if uploaded_file is not None:
+        # ... (логика загрузки)
+        pass
+
+def render_processing_overlay():
+    """Отрисовывает оверлей во время анализа."""
+    _, mid_col, _ = st.columns([1, 2, 1])
+    with mid_col:
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        with st.container(border=True):
+            st.markdown("<h2 style='text-align: center;'>Идет глубокий анализ...</h2>", unsafe_allow_html=True)
+            st.info("Пожалуйста, подождите. Система F.O.K.I.N. обрабатывает ваши данные. Это может занять несколько минут.")
+            
+            with st.status("Запускаю полный цикл диагностики...", expanded=True) as status:
                 try:
-                    # 1. Определяем, какой текст использовать
-                    if run_from_questionnaire:
+                    # 1. Подготовка текста
+                    if not st.session_state.raw_text:
                         full_text = ""
                         for block_title, questions in QUESTIONNAIRE_QUESTIONS.items():
                             full_text += f"\n\n--- {block_title} ---\n\n"
@@ -203,39 +206,34 @@ if not st.session_state.profile_generated:
                     show_pitch_engine = ShowPitchEngine(api_key=api_key)
                     format_engine = FormatEngine(api_key=api_key)
                     content_plan_engine = ContentPlanEngine(api_key=api_key)
-                
-                    # 3. Основной конвейер обработки с пошаговым логированием
-                    status.update(label="Шаг 1/7: 🚀 Движок Поглощения. Извлекаю ваше ценностное ядро из ответов...")
+
+                    # 3. Основной конвейер
+                    status.write("Шаг 1/7: 🚀 **Движок Поглощения.** Извлекаю ваше ценностное ядро, цели и 'врагов' из ответов, чтобы сформировать основу вашего цифрового ДНК.")
                     profile = ingestion_engine.process(st.session_state.raw_text)
-                    if not profile: raise ValueError("Не удалось создать профиль. Проверьте API ключ или текст опросника.")
+                    if not profile: raise ValueError("Не удалось создать профиль.")
 
-                    status.update(label="Шаг 2/7: 🌊 Движок Голубого Океана. Ищу уникальное позиционирование, анализируя конкурентов...")
-                    matrix = blue_ocean_engine.process(st.session_state.raw_text, profile)
-                    profile.positioning_matrix = matrix
+                    status.write("Шаг 2/7: 🌊 **Движок Голубого Океана.** Анализирую конкурентов, чтобы найти свободную нишу и создать уникальное позиционирование, которое выведет вас из 'алого океана' прямой борьбы.")
+                    profile.positioning_matrix = blue_ocean_engine.process(st.session_state.raw_text, profile)
 
-                    status.update(label="Шаг 3/7: 🗺️ Движок Стратегии. Проектирую дорожную карту и карту аудиторий...")
-                    strategy_data = strategy_engine.process(profile)
-                    profile.strategic_goals = strategy_data
+                    status.write("Шаг 3/7: 🗺️ **Движок Стратегии.** Проектирую долгосрочную дорожную карту и определяю 5 ключевых групп аудитории (стейкхолдеров), чтобы ваши действия были не хаотичными, а системными.")
+                    profile.strategic_goals = strategy_engine.process(profile)
 
-                    status.update(label="Шаг 4/7: 💰 Движок Коммерции. Создаю продуктовую линейку для монетизации...")
+                    status.write("Шаг 4/7: 💰 **Движок Коммерции.** Создаю продуктовую линейку (ПТУ), которая позволит эффективно монетизировать вашу экспертность и снизить риск выгорания.")
                     product_ladder = commerce_engine.process(profile)
 
-                    status.update(label="Шаг 5/7: 🧘‍♂️ Движок Гармонии. Выявляю ключевые конфликты для создания 'Стратегии Баланса'...")
+                    status.write("Шаг 5/7: 🧘‍♂️ **Движок Гармонии.** Выявляю скрытые конфликты между вашими целями и внутренними установками, чтобы превратить их из слабости в уникальную 'Стратегию Баланса'.")
                     profile = harmony_engine.process(profile)
 
-                    status.update(label="Шаг 6/7: 🎬 Движок Драматургии. Проектирую питч вашего флагманского шоу...")
-                    show_pitch = show_pitch_engine.process(profile)
-                    profile.show_pitch = show_pitch
+                    status.write("Шаг 6/7: 🎬 **Движок Драматургии.** Проектирую концепцию вашего флагманского шоу, которое станет ядром вашего контент-маркетинга и будет работать на вашу миссию.")
+                    profile.show_pitch = show_pitch_engine.process(profile)
 
-                    status.update(label="Шаг 7/7: 📚 Движок Форматов и Плана. Создаю библиотеку контента и план на неделю...")
-                    formats = format_engine.process(profile)
-                    profile.formats = formats
-                    plan = content_plan_engine.process(profile)
-                    profile.content_plan = plan
+                    status.write("Шаг 7/7: 📚 **Движок Форматов и Плана.** Создаю библиотеку поддерживающего контента и генерирую готовый план на неделю, чтобы вы точно знали, что и когда публиковать.")
+                    profile.formats = format_engine.process(profile)
+                    profile.content_plan = content_plan_engine.process(profile)
 
-                    status.update(label="✅ Диагностика завершена! Сохраняю результаты...", state="complete")
+                    status.update(label="✅ Диагностика завершена! Сохраняю результаты...", state="complete", expanded=False)
 
-                    # 4. Сохранение результатов в состояние сессии
+                    # 4. Сохранение результатов
                     st.session_state.client_profile = profile
                     st.session_state.scenario_producer = AIScenarioProducer(api_key=api_key)
                     st.session_state.calendar_engine = CalendarEngine(api_key=api_key)
@@ -243,7 +241,6 @@ if not st.session_state.profile_generated:
                         st.session_state.client_profile.products = [asdict(p) for p in [product_ladder.lead_magnet, product_ladder.tripwire, product_ladder.core_offer, product_ladder.high_ticket] if p]
                         st.session_state.product_ladder = product_ladder
                     
-                    # 5. Переключаем на основной экран
                     st.session_state.profile_generated = True
                     st.session_state.processing = False
                     st.rerun()
@@ -252,16 +249,7 @@ if not st.session_state.profile_generated:
                     st.session_state.processing = False
                     status.update(label=f"Ошибка на этапе диагностики: {e}", state="error")
                     st.error(f"Произошла ошибка: {e}")
-
-    # --- Загрузка профиля на стартовом экране ---
-    uploaded_file = st.file_uploader("...или загрузите существующий профиль", type=["json"])
-    if uploaded_file is not None:
-        data = json.load(uploaded_file)
-        # ... (логика десериализации остается той же)
-        profile = ClientProfileHub(**data)
-        st.session_state.client_profile = profile
-        st.session_state.profile_generated = True
-        st.rerun()
+                    st.button("Попробовать снова") # Позволяет пользователю сбросить состояние ошибки
 
 else:
     # --- ЭТАП 2: ОСНОВНОЕ РАБОЧЕЕ ПРОСТРАНСТВО ---
@@ -296,11 +284,6 @@ else:
 
         # --- Блок редактирования ---
         with st.expander("Редактировать Профиль"):
-            profile = st.session_state.client_profile
-            # --- ИСПРАВЛЕНИЕ ОШИБКИ: Проверяем, что профиль существует, перед доступом к нему ---
-            if not profile:
-                st.warning("Профиль еще не создан.")
-                st.stop()
 
             with st.form(key='profile_edit_form'):
                 # ... (форма редактирования)
@@ -354,10 +337,6 @@ else:
             st.markdown("---")
 
         # --- НОВЫЙ БЛОК: ВКЛАДКА "ОБРАЗ" ---
-        # --- ИСПРАВЛЕНИЕ ОШИБКИ: Добавляем проверку на существование профиля ---
-        if not st.session_state.client_profile:
-            st.warning("Профиль еще не сгенерирован. Пожалуйста, пройдите диагностику.")
-            
         with tab_obraz:
             st.subheader("Архитектура «Образа»")
             st.info("Здесь вы конструируете свой аутентичный образ. Эти данные напрямую влияют на генерацию контента и стратегии.")
@@ -365,6 +344,10 @@ else:
             # --- Модуль 1: Эмоциональное Ядро ---
             with st.expander("Блок 1: Эмоциональное Ядро (Матрица 8 Ключевых Эмоций)", expanded=True):
                 st.markdown("Зафиксируйте ваши эмоциональные реакции. Это основа драматургии вашего образа.")
+                
+                # --- ИСПРАВЛЕНИЕ ОШИБКИ: Проверяем, что профиль существует, перед доступом к нему ---
+                if not st.session_state.client_profile:
+                    st.warning("Профиль еще не создан."); st.stop()
                 
                 # Инициализация матрицы, если она пуста
                 if not st.session_state.client_profile.emotion_matrix:
@@ -1104,3 +1087,9 @@ else:
                         if synergy_pitch:
                             st.success("Найдена потенциальная коллаборация!")
                             st.json(synergy_pitch)
+
+# --- ГЛАВНЫЙ РОУТЕР ПРИЛОЖЕНИЯ ---
+if st.session_state.processing:
+    render_processing_overlay()
+elif not st.session_state.profile_generated:
+    render_startup_screen()
