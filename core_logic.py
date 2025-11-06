@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 import google.generativeai as genai
 import json
 from datetime import date
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 # ==============================================================================
 # --- БЛОК 1: ОПРЕДЕЛЕНИЕ СТРУКТУР ДАННЫХ ---
@@ -184,6 +185,7 @@ class IngestionEngine:
             }
         )
 
+    @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_extraction(self, raw_text: str) -> Optional[ClientProfileHub]:
         if not self.api_key:
             return self._get_mock_profile() # Используем мок-данные, если нет API-ключа
@@ -254,6 +256,7 @@ class BlueOceanEngine:
             "create": ["Автоматизированный 'Стратегический МРТ-сканер'", "Единый 'Client_Profile_Hub'"]
         }
 
+    @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_matrix(self, raw_text: str, client_profile: ClientProfileHub) -> Optional[Dict[str, List[str]]]:
         if not self.api_key:
             return self._get_mock_matrix()
@@ -322,6 +325,7 @@ class StrategyEngine:
             }
         }
 
+    @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_roadmap(self, profile: ClientProfileHub) -> Optional[Dict[str, Any]]:
         if not self.api_key:
             return self._get_mock_roadmap()
@@ -428,6 +432,7 @@ class CommerceEngine:
             high_ticket=Product(name="Менторство 'Архитектор Наследия' (Мок)", price=15000, purpose="Максимизация LTV")
         )
 
+    @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_pvl_design(self, profile: ClientProfileHub) -> Optional[ProductValueLadder]:
         if not self.api_key:
             return self._get_mock_pvl()
@@ -511,6 +516,7 @@ class AIScenarioProducer:
             "cta": cta
         }
 
+    @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_script_generation(self, profile: ClientProfileHub, anchor_points: Dict, product: Optional[Product] = None) -> Optional[Dict[str, str]]:
         if not self.api_key:
             return self._get_mock_script(profile, product)
@@ -587,6 +593,7 @@ class InterviewEngine:
         if api_key:
             genai.configure(api_key=api_key)
 
+    @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def get_follow_up_question(self, main_question: str, conversation_history: str) -> Optional[str]:
         """
         Генерирует уточняющий вопрос на основе предыдущего ответа пользователя.
@@ -648,6 +655,7 @@ class ShowPitchEngine:
             }
         }
 
+    @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_pitch(self, profile: ClientProfileHub) -> Optional[Dict[str, Any]]:
         if not self.api_key:
             return self._get_mock_pitch()
@@ -719,6 +727,7 @@ class FormatEngine:
             }
         ]
 
+    @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_formats(self, profile: ClientProfileHub) -> Optional[List[Dict[str, Any]]]:
         if not self.api_key:
             return self._get_mock_formats()
@@ -779,6 +788,7 @@ class ContentPlanEngine:
             {"day": "ВС", "theme": "Мой новый трек (Личная мечта)", "format_used": "Личный (Аудио-пост)", "target_audience": "Группа 1", "goal": "Баланс, Лояльность"},
         ]
 
+    @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_plan(self, profile: ClientProfileHub) -> Optional[List[Dict[str, str]]]:
         if not self.api_key:
             return self._get_mock_plan()
@@ -839,6 +849,7 @@ class SynergyEngine:
             "format": "Совместный прямой эфир / Панельная дискуссия."
         }
 
+    @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_synergy(self, profiles: List[ClientProfileHub]) -> Optional[Dict[str, str]]:
         if not self.api_key:
             return self._get_mock_pitch()
@@ -914,6 +925,7 @@ class CalendarEngine:
             Task(description="Смонтировать и добавить эффекты (Мок)")
         ]
 
+    @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def decompose_script_to_tasks(self, generated_script: Dict[str, str], anchor_points: Dict) -> List[Task]:
         """
         Декомпозирует сценарий в список задач с помощью AI.
