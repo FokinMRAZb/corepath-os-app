@@ -20,6 +20,16 @@ class ClientProfileHub:
     niche: List[str] = field(default_factory=list)
     superpower: Optional[str] = None
     gz: List[Dict[str, Any]] = field(default_factory=list)
+    # --- НОВЫЕ ПОЛЯ ДЛЯ АРХИТЕКТУРЫ «ОБРАЗА» ---
+    emotion_matrix: List[Dict[str, str]] = field(default_factory=list)
+    verbal_code: Dict[str, Any] = field(default_factory=dict)
+    competencies: Dict[str, List[str]] = field(default_factory=dict)
+    visual_identity: Dict[str, Any] = field(default_factory=dict)
+    peak_emotions: List[str] = field(default_factory=list)
+    superpower_application: List[Dict[str, str]] = field(default_factory=list)
+    social_capital: List[str] = field(default_factory=list)
+    formal_regalia: List[str] = field(default_factory=list)
+    reputational_risks: List[Dict[str, Any]] = field(default_factory=list)
     strategic_goals: Dict[str, Any] = field(default_factory=dict)
     audience_groups: Dict[str, Any] = field(default_factory=dict)
     positioning_matrix: Dict[str, Any] = field(default_factory=dict)
@@ -31,6 +41,7 @@ class ClientProfileHub:
     harmony_report: Optional[Dict[str, Any]] = None
     show_pitch: Optional[Dict[str, Any]] = None
     formats: List[Dict[str, Any]] = field(default_factory=list)
+    content_plan: List[Dict[str, Any]] = field(default_factory=list)
     regalia_ref: Optional[UUID] = None
     influence_capital: List['InfluenceAsset'] = field(default_factory=list)
     team: List['TeamMember'] = field(default_factory=list)
@@ -218,7 +229,7 @@ class IngestionEngine:
             return ClientProfileHub(**extracted_data)
         except Exception as e:
             print(f"❌ Ошибка при извлечении профиля через API: {e}")
-            return None
+            raise e # Пробрасываем ошибку наверх для отображения в UI
 
     def process(self, raw_text: str) -> Optional[ClientProfileHub]:
         print("🚀 Запуск Движка Поглощения...")
@@ -277,7 +288,7 @@ class BlueOceanEngine:
             return json.loads(cleaned_response)
         except Exception as e:
             print(f"❌ Ошибка при генерации Матрицы 4-х Действий через API: {e}")
-            return None
+            raise e # Пробрасываем ошибку наверх
 
     def process(self, raw_text: str, client_profile: ClientProfileHub) -> Optional[Dict[str, List[str]]]:
         print("🌊 Запуск Движка Голубого Океана...")
@@ -343,7 +354,7 @@ class StrategyEngine:
             return json.loads(cleaned_response)
         except Exception as e:
             print(f"❌ Ошибка при генерации Roadmap через API: {e}")
-            return None
+            raise e # Пробрасываем ошибку наверх
 
     def process(self, profile: ClientProfileHub) -> Optional[Dict[str, Any]]:
         print("🗺️ Запуск Движка Стратегии...")
@@ -458,7 +469,7 @@ class CommerceEngine:
             return pvl
         except Exception as e:
             print(f"❌ Ошибка при проектировании PVL через API: {e}")
-            return None
+            raise e # Пробрасываем ошибку наверх
 
     def process(self, profile: ClientProfileHub) -> Optional[ProductValueLadder]:
         print("💰 Запуск Движка Коммерции (ПТУ)...")
@@ -558,7 +569,7 @@ class AIScenarioProducer:
             return json.loads(cleaned_response)
         except Exception as e:
             print(f"❌ Ошибка при вызове Gemini API: {e}")
-            return None
+            raise e # Пробрасываем ошибку наверх
 
     def process(self, profile: ClientProfileHub, anchor_points: Dict, product: Optional[Product] = None) -> Optional[Dict[str, str]]:
         print("🎬 Запуск AI-Сценарного Продюсера...")
@@ -611,7 +622,277 @@ class InterviewEngine:
             return follow_up
         except Exception as e:
             print(f"❌ Ошибка при генерации уточняющего вопроса: {e}")
-            return "Произошла ошибка при генерации вопроса. Попробуйте еще раз."
+            raise e # Пробрасываем ошибку наверх
+
+class ShowPitchEngine:
+    """Реализует "Движок Драматургии" для создания питча флагманского шоу (Шаг 7)."""
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key
+        if api_key:
+            genai.configure(api_key=api_key)
+
+    def _get_mock_pitch(self) -> Dict[str, Any]:
+        print("⚠️ API-ключ не предоставлен. Возвращается симулированный питч шоу.")
+        return {
+            "show_title": "Архитектор Личностей (Мок)",
+            "concept": "YouTube-шоу, в котором ведущий разбирает 'устаревшие' подходы к личному бренду и противопоставляет им свою системную методологию, демонстрируя ее на реальных кейсах.",
+            "dramaturgy": {
+                "step1_you": "Подписчик, который 'застрял' и не знает, куда двигаться дальше.",
+                "step2_need": "Хочет найти себя и свой путь, обрести свободу.",
+                "step3_go": "Начинает смотреть шоу 'Архитектор Личностей'.",
+                "step4_search": "Изучает методологию, видит системный подход.",
+                "step5_find": "Осознает, что ему нужен не просто контент, а система для самоопределения.",
+                "step6_take": "Покупает доступ к приложению-диагносту.",
+                "step7_return": "Находит 'то, что по-настоящему нравится', получает ясность.",
+                "step8_changed": "Превращается в 'увлеченного человека', который строит свой бренд осознанно."
+            }
+        }
+
+    def _call_llm_for_pitch(self, profile: ClientProfileHub) -> Optional[Dict[str, Any]]:
+        if not self.api_key:
+            return self._get_mock_pitch()
+
+        print("\n🤖 [Real AI] Проектирование Питча Шоу через Gemini API...")
+        prompt = f"""
+        You are a showrunner and producer. Your task is to create a pitch document for a flagship YouTube show based on the client's profile and their balanced strategy.
+        The output MUST be a valid JSON object with keys: "show_title", "concept", and "dramaturgy".
+        - "dramaturgy" must be an object with 8 keys (step1_you, step2_need, ..., step8_changed) based on Harmon's Story Circle, describing the viewer's journey.
+        Do not add any text or explanations before or after the JSON object.
+
+        **Client Profile & Strategy:**
+        - Brand Name: {profile.brand_name}
+        - Superpower: {profile.superpower}
+        - Mission: {profile.values}
+        - Balanced Strategy: {profile.harmony_report.get('report_text', 'Не определена')}
+        - Target Audience (G1): {profile.audience_groups.get('Г1: Потребители контента', 'Не определена')}
+        - Role Models: {profile.style_voice.get('role_models', 'Не указаны')}
+
+        **Task:** Generate the pitch document. The show should aim to solve the audience's main problem and subtly lead to the client's 'non-conflicting' goal (e.g., an app or a product).
+        """
+        try:
+            safety_settings = {
+                'HARM_CATEGORY_HARASSMENT': 'BLOCK_ONLY_HIGH',
+                'HARM_CATEGORY_HATE_SPEECH': 'BLOCK_ONLY_HIGH',
+                'HARM_CATEGORY_SEXUALLY_EXPLICIT': 'BLOCK_ONLY_HIGH',
+                'HARM_CATEGORY_DANGEROUS_CONTENT': 'BLOCK_ONLY_HIGH',
+            }
+            model = genai.GenerativeModel('gemini-pro-latest')
+            response = model.generate_content(prompt, safety_settings=safety_settings)
+            cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
+            return json.loads(cleaned_response)
+        except Exception as e:
+            print(f"❌ Ошибка при генерации Питча Шоу: {e}")
+            raise e
+
+    def process(self, profile: ClientProfileHub) -> Optional[Dict[str, Any]]:
+        print("🎬 Запуск Движка Драматургии...")
+        pitch = self._call_llm_for_pitch(profile)
+        if pitch:
+            print("✅ Питч флагманского шоу успешно сгенерирован!")
+        return pitch
+
+class FormatEngine:
+    """Реализует "Движок Форматов" для создания библиотеки поддерживающих форматов (Шаг 8)."""
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key
+        if api_key:
+            genai.configure(api_key=api_key)
+
+    def _get_mock_formats(self) -> List[Dict[str, Any]]:
+        print("⚠️ API-ключ не предоставлен. Возвращаются симулированные форматы.")
+        return [
+            {
+                "format_name": "Анти-Продюсер (Мок)",
+                "idea": "Критика 'устаревших' подходов в индустрии.",
+                "content_carrier": "Шортс",
+                "format_tone": "Развлекательный",
+                "blog_genre": "Критика / Хейтинг",
+                "extras_triggers": ["Провокация", "Юмор"]
+            },
+            {
+                "format_name": "Разбор Кейса (Мок)",
+                "idea": "Демонстрация методологии на реальном примере.",
+                "content_carrier": "Статья",
+                "format_tone": "Экспертный",
+                "blog_genre": "Аналитика / Разбор",
+                "extras_triggers": ["Соц. док-во", "Кейс/Пример"]
+            }
+        ]
+
+    def _call_llm_for_formats(self, profile: ClientProfileHub) -> Optional[List[Dict[str, Any]]]:
+        if not self.api_key:
+            return self._get_mock_formats()
+
+        print("\n🤖 [Real AI] Генерация Библиотеки Форматов через Gemini API...")
+        prompt = f"""
+        You are a content strategist. Based on the client's profile and their flagship show pitch, generate a list of 3-4 supporting content formats.
+        The output MUST be a valid JSON object containing a single key "formats", which is a list of objects.
+        Each format object must have a "format_name" and keys corresponding to the 8 Anchor Points (idea, content_carrier, format_tone, blog_genre, extras_triggers, movie_genre, tv_genre, character).
+        Do not add any text or explanations before or after the JSON object.
+
+        **Client Profile & Show Pitch:**
+        - Brand Name: {profile.brand_name}
+        - Superpower: {profile.superpower}
+        - Balanced Strategy: {profile.harmony_report.get('report_text', 'Не определена')}
+        - Show Pitch: {profile.show_pitch}
+
+        **Task:** Generate the list of content formats.
+        """
+        try:
+            safety_settings = {
+                'HARM_CATEGORY_HARASSMENT': 'BLOCK_ONLY_HIGH',
+                'HARM_CATEGORY_HATE_SPEECH': 'BLOCK_ONLY_HIGH',
+                'HARM_CATEGORY_SEXUALLY_EXPLICIT': 'BLOCK_ONLY_HIGH',
+                'HARM_CATEGORY_DANGEROUS_CONTENT': 'BLOCK_ONLY_HIGH',
+            }
+            model = genai.GenerativeModel('gemini-pro-latest')
+            response = model.generate_content(prompt, safety_settings=safety_settings)
+            cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
+            return json.loads(cleaned_response).get("formats", [])
+        except Exception as e:
+            print(f"❌ Ошибка при генерации Библиотеки Форматов: {e}")
+            raise e
+
+    def process(self, profile: ClientProfileHub) -> Optional[List[Dict[str, Any]]]:
+        print("📚 Запуск Движка Форматов...")
+        formats = self._call_llm_for_formats(profile)
+        if formats:
+            print(f"✅ Библиотека из {len(formats)} форматов успешно сгенерирована!")
+        return formats
+
+class ContentPlanEngine:
+    """Реализует "Движок Контент-Плана" для создания недельного плана (Шаг 10)."""
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key
+        if api_key:
+            genai.configure(api_key=api_key)
+
+    def _get_mock_plan(self) -> List[Dict[str, str]]:
+        print("⚠️ API-ключ не предоставлен. Возвращается симулированный контент-план.")
+        return [
+            {"day": "ПН", "theme": "Критика 'устаревших' подходов", "format_used": "Анти-Продюсер (Мок)", "target_audience": "Группа 1 / 2", "goal": "Прогрев к Приложению"},
+            {"day": "ВТ", "theme": "Разбор кейса клиента X", "format_used": "Разбор Кейса (Мок)", "target_audience": "Группа 2 (B2B)", "goal": "Соц. док-во, Лиды на аудит"},
+            {"day": "СР", "theme": "Закулисье: тестирую новую фичу", "format_used": "Личный (Бэкстейдж)", "target_audience": "Группа 1", "goal": "Лояльность, Прогрев"},
+            {"day": "ЧТ", "theme": "Почему дети не хотят учиться?", "format_used": "Экспертная Статья", "target_audience": "Группа 1 / 3 / 5", "goal": "Миссия, Влияние"},
+            {"day": "ПТ", "theme": "Прямой эфир: разбор стратегий подписчиков", "format_used": "Флагманское Шоу", "target_audience": "Группа 1 / 2", "goal": "Лиды на Приложение"},
+            {"day": "СБ", "theme": "Почему 'долгие согласования' убивают креатив", "format_used": "Анти-Продюсер (Мок)", "target_audience": "Группа 2 (Продюсеры)", "goal": "Влияние"},
+            {"day": "ВС", "theme": "Мой новый трек (Личная мечта)", "format_used": "Личный (Аудио-пост)", "target_audience": "Группа 1", "goal": "Баланс, Лояльность"},
+        ]
+
+    def _call_llm_for_plan(self, profile: ClientProfileHub) -> Optional[List[Dict[str, str]]]:
+        if not self.api_key:
+            return self._get_mock_plan()
+
+        print("\n🤖 [Real AI] Генерация Контент-Плана на неделю через Gemini API...")
+        prompt = f"""
+        You are a master content strategist. Your task is to create a 7-day content plan.
+        The output MUST be a valid JSON object containing a single key "content_plan", which is a list of 7 objects.
+        Each object must represent a day and have the keys: "day" (e.g., "ПН"), "theme", "format_used", "target_audience", and "goal".
+        Use the provided content formats. The plan should strategically work towards the client's balanced strategy goals.
+        Do not add any text or explanations before or after the JSON object.
+
+        **Client Profile & Strategic Assets:**
+        - Balanced Strategy: {profile.harmony_report.get('report_text', 'Не определена')}
+        - Flagship Show Pitch: {profile.show_pitch}
+        - Available Content Formats: {profile.formats}
+        - Audience Groups: {profile.audience_groups}
+
+        **Task:** Generate the 7-day content plan.
+        """
+        try:
+            safety_settings = {
+                'HARM_CATEGORY_HARASSMENT': 'BLOCK_ONLY_HIGH',
+                'HARM_CATEGORY_HATE_SPEECH': 'BLOCK_ONLY_HIGH',
+                'HARM_CATEGORY_SEXUALLY_EXPLICIT': 'BLOCK_ONLY_HIGH',
+                'HARM_CATEGORY_DANGEROUS_CONTENT': 'BLOCK_ONLY_HIGH',
+            }
+            model = genai.GenerativeModel('gemini-pro-latest')
+            response = model.generate_content(prompt, safety_settings=safety_settings)
+            cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
+            return json.loads(cleaned_response).get("content_plan", [])
+        except Exception as e:
+            print(f"❌ Ошибка при генерации Контент-Плана: {e}")
+            raise e
+
+    def process(self, profile: ClientProfileHub) -> Optional[List[Dict[str, str]]]:
+        print("🗓️ Запуск Движка Контент-Плана...")
+        plan = self._call_llm_for_plan(profile)
+        if plan:
+            print(f"✅ Контент-план на {len(plan)} дней успешно сгенерирован!")
+        return plan
+
+class SynergyEngine:
+    """
+    Реализует "Движок Синергии" для поиска коллабораций между клиентами (Фаза O).
+    """
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = api_key
+        if api_key:
+            genai.configure(api_key=api_key)
+
+    def _get_mock_pitch(self) -> Dict[str, str]:
+        print("⚠️ API-ключ не предоставлен. Возвращается симулированный питч коллаборации.")
+        return {
+            "collaboration_title": "Системный Подход vs. Творческий Хаос (Мок)",
+            "concept": "Совместный прямой эфир, где два эксперта с разными подходами (системный и креативный) разбирают одну и ту же проблему, показывая силу синергии.",
+            "benefit_for_all": "Обмен аудиториями, демонстрация глубины экспертизы через диалог, создание уникального контента.",
+            "format": "Совместный прямой эфир / Панельная дискуссия."
+        }
+
+    def _call_llm_for_synergy(self, profiles: List[ClientProfileHub]) -> Optional[Dict[str, str]]:
+        if not self.api_key:
+            return self._get_mock_pitch()
+
+        print("\n🤖 [Real AI] Поиск синергии между профилями через Gemini API...")
+        
+        profiles_summary = ""
+        for i, p in enumerate(profiles):
+            profiles_summary += f"""
+            ---
+            **Профиль #{i+1}: {p.brand_name}**
+            - Ниша: {p.niche}
+            - Суперсила: {p.superpower}
+            - ЦА (Потребители): {p.audience_groups.get('Г1: Потребители контента', 'Не указана')}
+            - Враги (с чем борется): {p.enemies}
+            - Ценности/Миссия: {p.values}
+            ---
+            """
+
+        prompt = f"""
+        You are a master networker and producer. Your task is to find a powerful collaboration opportunity between the following client profiles.
+        Analyze their strengths, weaknesses, target audiences, and values to propose a single, compelling collaboration idea.
+        The output MUST be a valid JSON object with keys: "collaboration_title", "concept", "benefit_for_all", and "format".
+        Do not add any text or explanations before or after the JSON object.
+
+        **Client Profiles Data:**
+        {profiles_summary}
+
+        **Task:** Find a point of synergy and generate a collaboration pitch. Look for complementary skills, overlapping audiences, or common enemies.
+        """
+        try:
+            safety_settings = {
+                'HARM_CATEGORY_HARASSMENT': 'BLOCK_ONLY_HIGH',
+                'HARM_CATEGORY_HATE_SPEECH': 'BLOCK_ONLY_HIGH',
+                'HARM_CATEGORY_SEXUALLY_EXPLICIT': 'BLOCK_ONLY_HIGH',
+                'HARM_CATEGORY_DANGEROUS_CONTENT': 'BLOCK_ONLY_HIGH',
+            }
+            model = genai.GenerativeModel('gemini-pro-latest')
+            response = model.generate_content(prompt, safety_settings=safety_settings)
+            cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
+            return json.loads(cleaned_response)
+        except Exception as e:
+            print(f"❌ Ошибка при поиске Синергии: {e}")
+            raise e
+
+    def process(self, profiles: List[ClientProfileHub]) -> Optional[Dict[str, str]]:
+        print("🤝 Запуск Движка Синергии...")
+        if len(profiles) < 2:
+            print("❌ Для поиска синергии необходимо как минимум два профиля.")
+            return None
+        pitch = self._call_llm_for_synergy(profiles)
+        if pitch:
+            print("✅ Питч коллаборации успешно сгенерирован!")
+        return pitch
 
 class CalendarEngine:
     """
@@ -676,4 +957,4 @@ class CalendarEngine:
             return tasks
         except Exception as e:
             print(f"❌ Ошибка при AI-декомпозиции задач: {e}")
-            return []
+            raise e # Пробрасываем ошибку наверх
