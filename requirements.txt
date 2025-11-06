@@ -1,4 +1,3 @@
-streamlit
-google-generativeai
-pandas
-st_audiorec
+build-essential
+portaudio19-dev
+libasound2-dev
