@@ -13,6 +13,10 @@ from core_logic import (
     ClientProfileHub,
     AIScenarioProducer, 
     InterviewEngine,
+    ShowPitchEngine,
+    FormatEngine,
+    ContentPlanEngine,
+    SynergyEngine,
     CalendarEngine,
     ANCHOR_POINTS_DATA,
     InfluenceAsset,
@@ -20,6 +24,7 @@ from core_logic import (
     Comment,
     Attachment
 )
+from st_audiorec import st_audiorec
 
 # --- НОВЫЙ БЛОК: Вопросы для опросника ---
 # Полный, структурированный опросник на основе предоставленного текста
@@ -100,6 +105,8 @@ if 'current_conversation' not in st.session_state:
     st.session_state.current_conversation = []
 if 'profile_generated' not in st.session_state:
     st.session_state.profile_generated = False
+if 'active_tab' not in st.session_state:
+    st.session_state.active_tab = "📊 Дашборд"
 
 # --- УЛУЧШЕНИЕ: ЛОГИКА ОТОБРАЖЕНИЯ СТАРТОВОГО ЭКРАНА ИЛИ РАБОЧЕГО ПРОСТРАНСТВА ---
 
@@ -190,6 +197,9 @@ if not st.session_state.profile_generated:
                 harmony_engine = HarmonyDiagnosticEngine()
                 strategy_engine = StrategyEngine(api_key=api_key)
                 commerce_engine = CommerceEngine(api_key=api_key)
+                show_pitch_engine = ShowPitchEngine(api_key=api_key)
+                format_engine = FormatEngine(api_key=api_key)
+                content_plan_engine = ContentPlanEngine(api_key=api_key)
             
                 # 3. Основной конвейер обработки
                 try:
@@ -211,19 +221,27 @@ if not st.session_state.profile_generated:
                     profile.strategic_goals = strategy_data
 
                     product_ladder = commerce_engine.process(profile)
-                    if not product_ladder:
-                        st.error("Не удалось спроектировать Лестницу Ценности Продукта.")
-                        st.stop()
 
-                except ValueError as e:
+                    # Запускаем новый движок после определения стратегии
+                    profile = harmony_engine.process(profile) # Диагностика гармонии
+                    show_pitch = show_pitch_engine.process(profile)
+                    profile.show_pitch = show_pitch
+                    # Запускаем новый движок форматов
+                    formats = format_engine.process(profile)
+                    profile.formats = formats
+                    # Запускаем финальный движок контент-плана
+                    plan = content_plan_engine.process(profile)
+                    profile.content_plan = plan
+
+                except Exception as e: # Ловим любую ошибку от движков
                     if "PROHIBITED_CONTENT" in str(e):
                         st.error("Вы используете недопустимые формулировки. Мы заботимся о чистоте намерений и за культурное общение. Перефразируйте свой ответ.")
                     else:
-                        st.error(f"Произошла непредвиденная ошибка: {e}")
+                        st.error(f"Произошла ошибка при диагностике: {e}")
                     st.stop()
 
                 # 4. Сохранение результатов в состояние сессии
-                st.session_state.client_profile = harmony_engine.process(profile)
+                st.session_state.client_profile = profile
                 st.session_state.scenario_producer = AIScenarioProducer(api_key=api_key)
                 st.session_state.calendar_engine = CalendarEngine(api_key=api_key)
                 st.session_state.client_profile.products = [asdict(p) for p in [product_ladder.lead_magnet, product_ladder.tripwire, product_ladder.core_offer, product_ladder.high_ticket] if p]
@@ -284,7 +302,22 @@ else:
     with col2:
         st.header(" ") # Пустой заголовок для выравнивания
         
-        tab0, tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📊 Дашборд", "🧭 Стратегия", "📦 Продукты (ПТУ)", "🎬 Контент", "📋 Задачи", "💼 Капитал", "👥 Команда"])
+        # --- ГЛАВНОЕ ИЗМЕНЕНИЕ: НОВАЯ СТРУКТУРА ВКЛАДОК ---
+        tab_list = [
+            "📊 Дашборд", 
+            "👤 ОБРАЗ", 
+            "🧭 Стратегия", 
+            "🗓️ Контент-План",
+            "� Продукты", 
+            "🎬 Контент", 
+            "📋 Задачи", 
+            "🏆 Медийный Капитал", 
+            "👥 Команда",
+            "🤝 Синергия"
+        ]
+        
+        tabs = st.tabs(tab_list)
+        tab_dashboard, tab_obraz, tab_strategy, tab_plan, tab_products, tab_content, tab_tasks, tab_capital, tab_team, tab_synergy = tabs
 
         def generate_notifications():
             notifications = []
@@ -313,7 +346,131 @@ else:
                 st.warning(notification)
             st.markdown("---")
 
-        with tab0:
+        # --- НОВЫЙ БЛОК: ВКЛАДКА "ОБРАЗ" ---
+        with tab_obraz:
+            st.subheader("Архитектура «Образа»")
+            st.info("Здесь вы конструируете свой аутентичный образ. Эти данные напрямую влияют на генерацию контента и стратегии.")
+
+            # --- Модуль 1: Эмоциональное Ядро ---
+            with st.expander("Блок 1: Эмоциональное Ядро (Матрица 8 Ключевых Эмоций)", expanded=True):
+                st.markdown("Зафиксируйте ваши эмоциональные реакции. Это основа драматургии вашего образа.")
+                
+                # Инициализация матрицы, если она пуста
+                if not st.session_state.client_profile.emotion_matrix:
+                    st.session_state.client_profile.emotion_matrix = [
+                        {"Эмоция": "Гнев (Anger)", "Триггер": "", "Внутреннее Ощущение": "", "Внешнее Проявление": "", "Якорная Фраза": ""},
+                        {"Эмоция": "Страх (Fear)", "Триггер": "", "Внутреннее Ощущение": "", "Внешнее Проявление": "", "Якорная Фраза": ""},
+                        {"Эмоция": "Радость (Joy)", "Триггер": "", "Внутреннее Ощущение": "", "Внешнее Проявление": "", "Якорная Фраза": ""},
+                        {"Эмоция": "Грусть (Sadness)", "Триггер": "", "Внутреннее Ощущение": "", "Внешнее Проявление": "", "Якорная Фраза": ""},
+                        {"Эмоция": "Удивление (Surprise)", "Триггер": "", "Внутреннее Ощущение": "", "Внешнее Проявление": "", "Якорная Фраза": ""},
+                        {"Эмоция": "Отвращение (Disgust)", "Триггер": "", "Внутреннее Ощущение": "", "Внешнее Проявление": "", "Якорная Фраза": ""},
+                        {"Эмоция": "Доверие (Trust)", "Триггер": "", "Внутреннее Ощущение": "", "Внешнее Проявление": "", "Якорная Фраза": ""},
+                        {"Эмоция": "Предвкушение (Anticipation)", "Триггер": "", "Внутреннее Ощущение": "", "Внешнее Проявление": "", "Якорная Фраза": ""},
+                    ]
+                
+                edited_emotions = st.data_editor(
+                    st.session_state.client_profile.emotion_matrix,
+                    num_rows="dynamic",
+                    key="emotion_editor"
+                )
+                st.session_state.client_profile.emotion_matrix = edited_emotions
+
+                # --- УЛУЧШЕНИЕ: Выделение "Пиковых Эмоций" ---
+                st.markdown("##### Сигнатурные Эмоции Бренда")
+                st.caption("Выберите 3 'пиковые' эмоции, которые станут ядром драматургии вашего образа.")
+                emotion_options = [e["Эмоция"] for e in st.session_state.client_profile.emotion_matrix]
+                selected_peak_emotions = st.multiselect("Выберите 3 пиковые эмоции:", emotion_options, default=st.session_state.client_profile.peak_emotions, max_selections=3)
+                st.session_state.client_profile.peak_emotions = selected_peak_emotions
+
+            # --- Модуль 2: Визуальная Идентичность ---
+            with st.expander("Блок 2: Визуальная Идентичность (Стратегия Скрытого Влияния)"):
+                st.markdown("Закодируйте ваш образ через цвета, стиль и визуальные якоря.")
+                
+                if not st.session_state.client_profile.visual_identity:
+                    st.session_state.client_profile.visual_identity = {}
+                
+                vi = st.session_state.client_profile.visual_identity
+                vi['base_palette'] = st.text_input("Базовая Палитра (2-3 нейтральных цвета)", vi.get('base_palette', "Черный, Серый, Темно-синий"))
+                vi['accent_palette'] = st.text_input("Акцентная Палитра (1-2 ярких цвета)", vi.get('accent_palette', "Красный"))
+                vi['visual_anchors'] = st.text_area("Аксессуары и Визуальные Якоря", vi.get('visual_anchors', "Очки определенной оправы\nЧасы (Скрытый Премиум)"))
+                vi['clothing_style'] = st.selectbox("Предпочтительный Стиль Одежды", ["Business Casual", "Tech Minimalist", "Smart Casual", "Creative"], index=1)
+
+                st.markdown("##### Коллекция «Луков»")
+                st.caption("Ваша 'библиотека образов'. Выберите один из них в зависимости от задачи дня.")
+                if 'look_collection' not in vi or not vi['look_collection']:
+                    vi['look_collection'] = [
+                        {"Название «Лука»": "ЭКСПЕРТ", "Позиционирование / Задача": "Трансляция авторитета, власти", "Ключевые Элементы": "Темно-синий блейзер, качественная футболка", "Акцент / Аксессуар": "Часы", "Когда Использовать": "Вебинары, B2B-переговоры"},
+                        {"Название «Лука»": "ПРОВОКАТОР", "Позиционирование / Задача": "Трансляция энергии, 'пиковых эмоций'", "Ключевые Элементы": "Черная водолазка, кожаная куртка", "Акцент / Аксессуар": "Красный браслет", "Когда Использовать": "Конфликтный контент, шоу"},
+                        {"Название «Лука»": "СВОЙ ПАРЕНЬ", "Позиционирование / Задача": "Трансляция эмпатии, аутентичности", "Ключевые Элементы": "Серая футболка, худи, джинсы", "Акцент / Аксессуар": "Отсутствие ярких акцентов", "Когда Использовать": "Лайфстайл-контент, сторис"},
+                        {"Название «Лука»": "НАСТАВНИК", "Позиционирование / Задача": "Сочетание авторитета и эмпатии", "Ключевые Элементы": "Качественный свитер, светлая рубашка", "Акцент / Аксессуар": "Очки, блокнот", "Когда Использовать": "Обучающие лекции, разбор кейсов"},
+                    ]
+                
+                edited_looks = st.data_editor(
+                    vi['look_collection'],
+                    num_rows="dynamic",
+                    key="looks_editor"
+                )
+                vi['look_collection'] = edited_looks
+
+            # --- Модуль 3: Вербальный Код ---
+            with st.expander("Блок 3: Вербальный и Вокальный Код"):
+                st.markdown("Определите ваш 'Голос Бренда'. Что и как вы говорите.")
+                
+                if not st.session_state.client_profile.verbal_code:
+                    st.session_state.client_profile.verbal_code = {}
+
+                vc = st.session_state.client_profile.verbal_code
+                vc['anchor_phrases'] = st.text_input("Фразы-Якоря (через запятую)", ", ".join(vc.get('anchor_phrases', [])), key="vc_anchors")
+                vc['communication_style'] = st.selectbox("Манера Общения", ["Таинственный", "Провокационный", "Дружелюбный", "Авторитетный", "Наставнический"], key="vc_style")
+                vc['profanity_use'] = st.selectbox("Использование Мата", ["Нет", "Да", "В Исключениях"], key="vc_profanity")
+                vc['forbidden_words'] = st.text_input("Слова-Паразиты (ЗАПРЕТ)", ", ".join(vc.get('forbidden_words', [])), key="vc_forbidden")
+                vc['professional_jargon'] = st.text_area("Профессиональный Жаргон (термин: объяснение)", vc.get('professional_jargon', ""), key="vc_jargon")
+
+                st.markdown("---")
+                st.markdown("#### Тренажер: Бесконечный Монолог")
+                st.caption("Нажмите на иконку микрофона, чтобы записать монолог на 1-3 минуты на любую тему. Затем прослушайте запись и проведите аудит своей речи.")
+                
+                wav_audio_data = st_audiorec()
+
+                if wav_audio_data is not None:
+                    st.audio(wav_audio_data, format='audio/wav')
+                    st.text_area("Аудит Слов-Паразитов (выпишите все, что заметили)", key="parasite_audit")
+
+            # --- Модуль 4: Матрица Компетенций ---
+            with st.expander("Блок 4: Матрица Компетенций"):
+                st.markdown("Проведите инвентаризацию ваших активов и определите точки роста.")
+                
+                if not st.session_state.client_profile.competencies:
+                    st.session_state.client_profile.competencies = {"superpowers": [], "growth_zones": []}
+
+                comp = st.session_state.client_profile.competencies
+                comp['superpowers'] = st.text_area("Мои «Суперсилы» (Инструменты Воздействия)", "\n".join(comp.get('superpowers', [])), key="comp_superpowers", help="Каждый навык с новой строки.")
+                comp['growth_zones'] = st.text_area("Мои «Зоны Роста» (Над чем стоит поработать)", "\n".join(comp.get('growth_zones', [])), key="comp_growth", help="Каждый пункт с новой строки.")
+
+                # Преобразуем текст обратно в списки
+                st.session_state.client_profile.competencies['superpowers'] = [line.strip() for line in comp['superpowers'].split('\n') if line.strip()]
+                st.session_state.client_profile.competencies['growth_zones'] = [line.strip() for line in comp['growth_zones'].split('\n') if line.strip()]
+
+                # --- УЛУЧШЕНИЕ: Матрица Применения «Суперсил» ---
+                st.markdown("---")
+                st.markdown("#### Матрица Применения «Суперсил»")
+                st.caption("Свяжите ваши навыки с конкретными целями, чтобы превратить их в работающие активы.")
+                
+                if 'superpower_application' not in st.session_state.client_profile or not st.session_state.client_profile.superpower_application:
+                     st.session_state.client_profile.superpower_application = [
+                         {"Инструмент / Суперсила": "", "Связанная Цель": "", "Механизм Помощи": ""},
+                     ]
+
+                edited_superpower_app = st.data_editor(
+                    st.session_state.client_profile.superpower_application,
+                    num_rows="dynamic",
+                    key="superpower_app_editor",
+                    use_container_width=True
+                )
+                st.session_state.client_profile.superpower_application = edited_superpower_app
+
+
+        with tab_dashboard:
             st.subheader("Дашборд Проекта")
 
             if 'tasks' in st.session_state and st.session_state.tasks:
@@ -368,7 +525,7 @@ else:
             else:
                 st.info("Создайте план проекта на вкладке 'Задачи', чтобы увидеть статистику.")
 
-        with tab1: # Стратегия
+        with tab_strategy: # Стратегия
             st.subheader("Отчет о Гармонии")
             report_text = st.session_state.client_profile.harmony_report.get("report_text", "Отчет не сгенерирован.")
             if "Конфликт" in report_text:
@@ -381,6 +538,35 @@ else:
                         """)
             else:
                 st.success(report_text)
+            
+            st.markdown("---")
+            st.subheader("🎬 Питч Флагманского Шоу")
+            if st.session_state.client_profile.show_pitch:
+                pitch = st.session_state.client_profile.show_pitch
+                st.markdown(f"### {pitch.get('show_title', 'Название не сгенерировано')}")
+                st.caption(pitch.get('concept', 'Концепция не сгенерирована.'))
+
+                with st.expander("Драматургия (Круг Хармона)"):
+                    dramaturgy = pitch.get('dramaturgy', {})
+                    st.markdown(f"**1. ТЫ (Зритель):** {dramaturgy.get('step1_you', '...')}")
+                    st.markdown(f"**2. ХОЧЕШЬ (Потребность):** {dramaturgy.get('step2_need', '...')}")
+                    st.markdown(f"**3. ИДИ (Зов к приключениям):** {dramaturgy.get('step3_go', '...')}")
+                    st.markdown(f"**4. ИЩИ (Испытания):** {dramaturgy.get('step4_search', '...')}")
+                    st.markdown(f"**5. НАЙДИ (Откровение):** {dramaturgy.get('step5_find', '...')}")
+                    st.markdown(f"**6. ЗАБЕРИ (Цена):** {dramaturgy.get('step6_take', '...')}")
+                    st.markdown(f"**7. ВЕРНИСЬ (Возвращение):** {dramaturgy.get('step7_return', '...')}")
+                    st.markdown(f"**8. ИЗМЕНИСЬ (Трансформация):** {dramaturgy.get('step8_changed', '...')}")
+
+            st.markdown("---")
+            st.subheader("📚 Библиотека Поддерживающих Форматов")
+            if st.session_state.client_profile.formats:
+                for i, format_item in enumerate(st.session_state.client_profile.formats):
+                    with st.expander(f"Формат #{i+1}: {format_item.get('format_name', 'Без названия')}"):
+                        st.markdown(f"**Идея:** {format_item.get('idea', '...')}")
+                        st.markdown(f"**Носитель:** {format_item.get('content_carrier', '...')}")
+                        st.markdown(f"**Тональность:** {format_item.get('format_tone', '...')}")
+                        st.markdown(f"**Жанр:** {format_item.get('blog_genre', '...')}")
+                        st.markdown(f"**Триггеры:** {', '.join(format_item.get('extras_triggers', []))}")
 
             st.markdown("---")
             st.subheader("🗺️ Стратегическая Карта")
@@ -426,7 +612,41 @@ else:
             with st.expander("Показать итоговый Client_Profile_Hub (JSON)", expanded=False):
                 st.json(asdict(st.session_state.client_profile))
 
-        with tab2: # Продукты
+        with tab_plan: # Контент-План
+            st.subheader("🗓️ Автоматический Контент-План на Неделю")
+            st.info("Это стратегический план, сгенерированный AI на основе вашего профиля, целей и форматов. Используйте его как основу для создания сценариев во вкладке 'Контент'.")
+
+            if st.session_state.client_profile.content_plan:
+                plan = st.session_state.client_profile.content_plan
+                
+                # --- УЛУЧШЕНИЕ: Интерактивный план с кнопками ---
+                header_cols = st.columns((1, 4, 2, 2, 2, 2))
+                headers = ["День", "Тема / Идея", "Формат", "ЦА", "Цель", "Действие"]
+                for col, header in zip(header_cols, headers):
+                    col.markdown(f"**{header}**")
+
+                for i, item in enumerate(plan):
+                    cols = st.columns((1, 4, 2, 2, 2, 2))
+                    cols[0].write(item.get("day", "-"))
+                    cols[1].write(item.get("theme", "-"))
+                    cols[2].write(item.get("format_used", "-"))
+                    cols[3].write(item.get("target_audience", "-"))
+                    cols[4].write(item.get("goal", "-"))
+                    if cols[5].button("🎬 Создать Сценарий", key=f"create_script_{i}"):
+                        # Сохраняем данные для автозаполнения
+                        st.session_state.prefill_data = {
+                            "idea": item.get("theme", ""),
+                            "format_name": item.get("format_used", "")
+                        }
+                        # Переключаемся на вкладку "Контент"
+                        # Это хак для Streamlit, прямое переключение вкладок не поддерживается
+                        # Мы просто перезапускаем приложение, а на вкладке "Контент" проверим prefill_data
+                        st.rerun() 
+
+            else:
+                st.warning("Контент-план не был сгенерирован. Пожалуйста, перезапустите диагностику.")
+
+        with tab_products: # Продукты
             if st.session_state.product_ladder:
                 st.subheader("💰 Лестница Ценности Продукта (ПТУ)")
                 with st.expander("Почему именно такая продуктовая линейка?"):
@@ -499,12 +719,36 @@ else:
                     st.write(f"Доход с Core Offer: ${int(core_offer_revenue):,}")
                     st.write(f"**Итоговый доход:** **${int(total_revenue):,}**")
 
-        with tab3: # Контент
+        with tab_content: # Контент
             with st.form("scenario_constructor_form"):
-                st.subheader("🛠️ Конструктор Сценария")
-                # ... (код конструктора сценария остается без изменений)
-                idea = st.text_input("1. Идея (О чём?)", placeholder="Например: Преодоление творческого ступора")
-                content_carrier = st.selectbox("2. Контент-носитель", ANCHOR_POINTS_DATA["content_carriers"])
+                st.subheader("🛠️ Конструктор Сценариев")
+
+                # --- УЛУЧШЕНИЕ: ВЫБОР ИЗ БИБЛИОТЕКИ ФОРМАТОВ ---
+                # Проверяем, есть ли данные для автозаполнения из контент-плана
+                prefill_data = st.session_state.get('prefill_data', None)
+                
+                format_names = ["(Создать с нуля)"] + [f.get('format_name', f'Формат #{i+1}') for i, f in enumerate(st.session_state.client_profile.formats or [])]
+                
+                # Устанавливаем значение по умолчанию для selectbox
+                default_format_index = 0
+                if prefill_data and prefill_data.get("format_name") in format_names:
+                    default_format_index = format_names.index(prefill_data.get("format_name"))
+
+                selected_format_name = st.selectbox("Выберите формат из вашей библиотеки (опционально):", format_names, index=default_format_index)
+
+                # Автозаполнение полей на основе выбранного формата
+                default_values = {}
+                if selected_format_name != "(Создать с нуля)":
+                    selected_format = next((f for f in (st.session_state.client_profile.formats or []) if f.get('format_name') == selected_format_name), None)
+                    if selected_format:
+                        default_values = {
+                            "idea": selected_format.get('idea', ''),
+                            "content_carrier": selected_format.get('content_carrier', ANCHOR_POINTS_DATA["content_carriers"][0]),
+                        }
+                
+                st.markdown("---")
+                idea = st.text_input("1. Идея (О чём?)", value=default_values.get("idea", ""), placeholder="Например: Преодоление творческого ступора")
+                content_carrier = st.selectbox("2. Контент-носитель", ANCHOR_POINTS_DATA["content_carriers"], index=ANCHOR_POINTS_DATA["content_carriers"].index(default_values["content_carrier"]) if "content_carrier" in default_values else 0)
                 format_tone = st.selectbox("3. Формат-тональность", ANCHOR_POINTS_DATA["formats"])
                 # ... (остальные поля конструктора)
                 blog_genre = st.selectbox("4. Жанр Блога (Видеоформат)", ANCHOR_POINTS_DATA["blog_genres"])
@@ -515,7 +759,12 @@ else:
                 # Улучшение: Автозаполнение поля "Персонаж"
                 character_default = st.session_state.client_profile.brand_name if st.session_state.client_profile else ""
                 character = st.text_input("8. Персонаж/Ниша", value=character_default)
-                product_names = ["(Нет продукта)"] + [p['name'] for p in st.session_state.client_profile.products]
+                
+                # Очищаем данные для автозаполнения после использования
+                if 'prefill_data' in st.session_state:
+                    del st.session_state['prefill_data']
+
+                product_names = ["(Нет продукта)"] + [p['name'] for p in (st.session_state.client_profile.products or [])]
                 selected_product_name = st.selectbox("Выберите продукт для продвижения (опционально):", product_names)
                 submitted = st.form_submit_button("🎬 Сгенерировать Сценарий")
                 if submitted:
@@ -552,7 +801,7 @@ else:
                 st.markdown("##### 📦 3. КОНТЕНТ (15с)"); st.info(script_data.get('content', ''))
                 st.markdown("##### 4. CTA (Призыв к действию)"); st.success(script_data.get('cta', ''))
 
-        with tab4: # Задачи
+        with tab_tasks: # Задачи
             st.subheader("Декомпозиция в Задачи")
 
             # --- НОВЫЙ БЛОК: ВЫБОР СЦЕНАРИЯ ДЛЯ ДЕКОМПОЗИЦИИ ---
@@ -565,19 +814,22 @@ else:
                 script_to_decompose = st.session_state.script_history[selected_script_index]
 
                 if st.button("📅 Создать План Проекта"):
-                    with st.spinner("Планирую задачи..."):
-                        calendar_engine = st.session_state.get('calendar_engine')
-                        if not calendar_engine:
-                            st.error("Ошибка: календарный движок не инициализирован. Пожалуйста, запустите диагностику заново.")
-                            st.stop()
+                    try:
+                        with st.spinner("Планирую задачи..."):
+                            calendar_engine = st.session_state.get('calendar_engine')
+                            if not calendar_engine:
+                                st.error("Ошибка: календарный движок не инициализирован. Пожалуйста, запустите диагностику заново.")
+                                st.stop()
 
-                        # Ищем оригинальные "8 точек" для этого сценария
-                        original_anchor_points = st.session_state.script_history[selected_script_index].get('anchor_points_ref', {})
-                        
-                        tasks = calendar_engine.decompose_script_to_tasks(script_to_decompose, original_anchor_points)
-                        st.session_state.tasks = tasks
-                        if tasks:
-                            st.success(f"AI сгенерировал {len(tasks)} задач для проекта!")
+                            # Ищем оригинальные "8 точек" для этого сценария
+                            original_anchor_points = st.session_state.script_history[selected_script_index].get('anchor_points_ref', {})
+                            
+                            tasks = calendar_engine.decompose_script_to_tasks(script_to_decompose, original_anchor_points)
+                            st.session_state.tasks = tasks
+                            if tasks:
+                                st.success(f"AI сгенерировал {len(tasks)} задач для проекта!")
+                    except Exception as e:
+                        st.error(f"Произошла ошибка при создании плана: {e}")
             else:
                 st.warning("Сначала сгенерируйте сценарий во вкладке 'Контент'.")
 
@@ -605,7 +857,7 @@ else:
                             if comment_text:
                                 # В реальном приложении автора нужно брать из сессии пользователя
                                 author_name = "Я" 
-                                new_comment = Comment(author=author_name, text=comment_text)
+                                new_comment = Comment(author=author_name, text=comment_text) # type: ignore
                                 st.session_state.tasks[index].comments.append(new_comment) # Ошибка здесь, исправим
                                 st.rerun()
 
@@ -664,7 +916,7 @@ else:
 
                             # Установка дедлайна
                             priorities = ["Низкий", "Средний", "Высокий"]
-                            new_deadline = st.date_input("Дедлайн", value=task.deadline, key=f"deadline_{index}")
+                            new_deadline = st.date_input("Дедлайн", value=task.deadline, key=f"deadline_{index}") # type: ignore
                             st.session_state.tasks[index].deadline = new_deadline
                             if st.button("✏️", key=f"edit_{index}"):
                                 st.session_state.editing_task_index = index
@@ -712,8 +964,47 @@ else:
                 except ImportError:
                     st.warning("Для экспорта в CSV необходимо установить библиотеку pandas: `pip install pandas`")
 
-        with tab5: # Капитал
-            st.subheader("Капитал Влияния")
+        with tab_capital: # Медийный Капитал
+            st.subheader("🏆 Медийный Капитал (Аудит Репутации)")
+            st.info("Ваша репутация — это актив для работы с партнерами, инвесторами и ключевыми фигурами (ЦА 3-5). Здесь мы проводим его инвентаризацию.")
+
+            # --- Модуль 6.1: Инвентаризация Медийного Веса ---
+            with st.expander("Блок 6.1: Инвентаризация Медийного Веса", expanded=True):
+                st.markdown("#### Формальные Регалии (Фундамент)")
+                st.session_state.client_profile.formal_regalia = st.text_area(
+                    "Образование, награды, звания, официальные титулы.",
+                    "\n".join(st.session_state.client_profile.formal_regalia),
+                    key="formal_regalia_input", help="Каждая регалия с новой строки."
+                ).splitlines() # type: ignore
+
+                st.markdown("#### Социальный Капитал (Сеть)")
+                st.session_state.client_profile.social_capital = st.text_area(
+                    "Список известных людей/брендов, с которыми вы работали или которые вас упоминают.",
+                    "\n".join(st.session_state.client_profile.social_capital),
+                    key="social_capital_input", help="Каждый пункт с новой строки."
+                ).splitlines() # type: ignore
+
+                st.markdown("#### «Живые Регалии» (Портфель Активов)")
+                st.caption("Ваши измеримые достижения: кейсы, отзывы, упоминания в СМИ, выступления. Добавляются через форму ниже.")
+            
+            # --- Модуль 6.2: Протокол «Аудита Прошлого» ---
+            with st.expander("Блок 6.2: Протокол «Аудита Прошлого» (Конфиденциально)"):
+                st.warning("Будьте абсолютно честны с собой. То, что мы знаем, мы можем контролировать.")
+                
+                if not st.session_state.client_profile.reputational_risks:
+                    st.session_state.client_profile.reputational_risks = [
+                        {"Риск": "Были ли у вас публичные конфликты?", "Есть": False, "Описание/Контр-аргумент": ""},
+                        {"Риск": "Существуют ли «неудобные» фото или видео из прошлого?", "Есть": False, "Описание/Контр-аргумент": ""},
+                        {"Риск": "Были ли у вас проблемы с законом или финансовые споры?", "Есть": False, "Описание/Кон-аргумент": ""},
+                        {"Риск": "Высказывали ли вы ранее мнения, противоречащие образу?", "Есть": False, "Описание/Контр-аргумент": ""},
+                        {"Риск": "Есть ли люди, которые могут иметь на вас «зуб»?", "Есть": False, "Описание/Контр-аргумент": ""},
+                    ]
+                
+                edited_risks = st.data_editor(st.session_state.client_profile.reputational_risks, key="risks_editor")
+                st.session_state.client_profile.reputational_risks = edited_risks
+
+            st.markdown("---")
+            st.subheader("💼 Управление Портфелем Активов")
             with st.expander("➕ Добавить новый актив влияния"):
                 with st.form("influence_asset_form", clear_on_submit=True):
                     asset_type = st.selectbox("Тип актива", ["Отзыв", "Кейс", "Упоминание в СМИ", "Выступление"])
@@ -733,7 +1024,6 @@ else:
                         else:
                             st.error("Заголовок и описание актива не могут быть пустыми.")
 
-            st.subheader("💼 Портфель активов")
             if st.session_state.client_profile.influence_capital:
                 for asset in reversed(st.session_state.client_profile.influence_capital):
                     with st.container(border=True):
@@ -745,7 +1035,7 @@ else:
             else:
                 st.info("В вашем портфеле пока нет активов. Добавьте первый, используя форму выше.")
 
-        with tab6: # Команда
+        with tab_team: # Команда
             st.subheader("Командный Модуль")
 
             with st.expander("➕ Добавить нового члена команды"):
@@ -774,3 +1064,31 @@ else:
                         st.rerun()
             else:
                 st.info("В вашей команде пока нет участников.")
+
+        with tab_synergy:
+            st.subheader("🤝 Модуль «Синергия»")
+            st.info("Найдите точки для взаимовыгодных коллабораций между вашими клиентами. Загрузите 2 или более файла профиля (`.json`) для анализа.")
+
+            uploaded_profiles = st.file_uploader(
+                "Загрузите профили клиентов для анализа", 
+                type=["json"], 
+                accept_multiple_files=True,
+                key="synergy_uploader"
+            )
+
+            if st.button("🚀 Найти Синергию", disabled=(not uploaded_profiles or len(uploaded_profiles) < 2)):
+                profiles_to_analyze = []
+                for file in uploaded_profiles:
+                    try:
+                        data = json.load(file)
+                        profiles_to_analyze.append(ClientProfileHub(**data))
+                    except Exception as e:
+                        st.error(f"Не удалось прочитать файл {file.name}: {e}")
+                
+                if len(profiles_to_analyze) >= 2:
+                    with st.spinner("Анализирую профили и ищу точки соприкосновения..."):
+                        synergy_engine = SynergyEngine(api_key=st.session_state.api_key_input)
+                        synergy_pitch = synergy_engine.process(profiles_to_analyze)
+                        if synergy_pitch:
+                            st.success("Найдена потенциальная коллаборация!")
+                            st.json(synergy_pitch)
