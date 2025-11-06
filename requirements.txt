@@ -1,4 +1,4 @@
 streamlit
 google-generativeai
 pandas
-st_audiorec
+streamlit-audiorec
