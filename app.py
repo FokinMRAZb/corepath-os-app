@@ -26,7 +26,7 @@ from core_logic import (
     Attachment
 )
 from st_audiorec import st_audiorec # Убедитесь, что этот пакет установлен: pip install streamlit-audiorec
-from st_pages import show_pages, Page
+from st_pages import Page
 
 # --- НОВЫЙ БЛОК: Вопросы для опросника ---
 # Полный, структурированный опросник на основе предоставленного текста
