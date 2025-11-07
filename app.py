@@ -26,7 +26,7 @@ from core_logic import (
     Attachment
 )
 from st_audiorec import st_audiorec # Убедитесь, что этот пакет установлен: pip install streamlit-audiorec
-from st_pages import Page
+from st_pages import Page, show_pages
 
 # --- НОВЫЙ БЛОК: Вопросы для опросника ---
 # Полный, структурированный опросник на основе предоставленного текста
@@ -142,6 +142,17 @@ if 'producer_tasks' not in st.session_state:
     st.session_state.producer_tasks = []
 if 'wizard_notification_shown' not in st.session_state:
     st.session_state.wizard_notification_shown = False
+
+def generate_notifications():
+    """
+    Генерирует список уведомлений на основе текущего состояния профиля.
+    """
+    notifications = []
+    if st.session_state.client_profile and not st.session_state.wizard_complete and not st.session_state.wizard_notification_shown:
+        notifications.append({"type": "info", "text": "Ваш профиль сгенерирован! Пройдите 11 шагов верификации стратегии."})
+        st.session_state.wizard_notification_shown = True
+
+    return notifications
 
 def run_offline_processing(status):
     """
@@ -548,7 +559,7 @@ def render_strategic_wizard():
 
 def render_main_workspace():
     # --- ЭТАП 2: ОСНОВНОЕ РАБОЧЕЕ ПРОСТРАНСТВО ---
-    # Переносим определение колонок сюда для надежности
+    # Определение колонок для основного рабочего пространства
     col1, col2 = st.columns([1, 3])
 
     with col1:
@@ -585,7 +596,7 @@ def render_main_workspace():
         
         # --- НОВЫЙ БЛОК: Уведомления ---
         notifications = generate_notifications()
-        if notifications:
+        if notifications: # type: ignore
             with st.expander("🔔 Уведомления", expanded=True):
                 for notification in notifications:
                     if notification["type"] == "warning":
@@ -641,7 +652,7 @@ def render_main_workspace():
         ]
         
         tabs = st.tabs(tab_list)
-        tab_dashboard, tab_obraz_constructor, tab_strategy, tab_plan, tab_products, tab_content, tab_tasks, tab_capital, tab_team, tab_synergy = tabs
+        (tab_dashboard, tab_obraz_constructor, tab_strategy, tab_plan, tab_products, tab_content, tab_tasks, tab_messenger, tab_synergy) = tabs
 
 
         with tab_dashboard:
