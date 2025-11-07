@@ -25,7 +25,7 @@ from core_logic import (
     Comment,
     Attachment
 )
-from st_audiorec import st_audiorec # Убедитесь, что этот пакет установлен: pip install streamlit-audiorec
+from st_audiorec import st_audiorec
 from st_pages import Page, show_pages
 
 # --- НОВЫЙ БЛОК: Вопросы для опросника ---
@@ -142,6 +142,17 @@ if 'producer_tasks' not in st.session_state:
     st.session_state.producer_tasks = []
 if 'wizard_notification_shown' not in st.session_state:
     st.session_state.wizard_notification_shown = False
+
+
+def generate_notifications():
+    """
+    Генерирует список уведомлений на основе текущего состояния профиля.
+    """
+    notifications = []
+    if st.session_state.client_profile and not st.session_state.wizard_complete and not st.session_state.wizard_notification_shown:
+        notifications.append({"type": "info", "text": "Ваш профиль сгенерирован! Пройдите 11 шагов верификации стратегии."})
+        st.session_state.wizard_notification_shown = True
+    return notifications
 
 def generate_notifications():
     """
