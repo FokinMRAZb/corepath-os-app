@@ -25,8 +25,9 @@ from core_logic import (
     Comment,
     Attachment
 )
-from st_audiorec import st_audiorec
-from st_pages import show_pages, Page
+from st_audiorec import st_audiorec # Убедитесь, что этот пакет установлен: pip install streamlit-audiorec
+from st_pages import Page
+from st_pages.show_pages import show_pages # Корректный импорт show_pages
 
 # --- НОВЫЙ БЛОК: Вопросы для опросника ---
 # Полный, структурированный опросник на основе предоставленного текста
