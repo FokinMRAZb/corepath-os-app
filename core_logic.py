@@ -126,9 +126,9 @@ class Channel:
     """
     Представляет один канал/чат в мессенджере.
     """
-    channel_id: UUID = field(default_factory=uuid4)
     profile_id: UUID
     channel_name: str
+    channel_id: UUID = field(default_factory=uuid4)
     channel_type: str = "group" # 'group' or 'direct'
     members: List[UUID] = field(default_factory=list) # List of user_ids
 
