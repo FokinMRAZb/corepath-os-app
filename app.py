@@ -511,7 +511,7 @@ def render_strategic_wizard():
     elif step == 5:
         st.warning("ВНИМАНИЕ: Это самый важный шаг. Система проверила вашу стратегию на внутренние противоречия, которые могут привести к выгоранию.")
         
-        harmony_report = profile.harmony_report if profile else None
+        harmony_report = profile.harmony_report
         if harmony_report and "conflict_details" in harmony_report:
             st.error(harmony_report.get("report_text", "Отчет о гармонии неполный."))
         elif harmony_report:
