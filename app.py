@@ -461,28 +461,28 @@ def render_strategic_wizard():
     ]
     
     # Отображаем текущий шаг
+    st.subheader(step_titles[step - 1])
+
     if step == 1:
-        st.subheader(step_titles[0])
         st.write("AI проанализировал ваши ответы и сформировал ваше 'Цифровое ДНК'. Проверьте ключевые параметры:")
-        st.json({
-            "brand_name": profile.brand_name,
-            "niche": profile.niche,
-            "superpower": profile.superpower,
-            "values": profile.values,
-            "enemies": profile.enemies
-        })
+        if profile:
+            st.json({
+                "brand_name": profile.brand_name,
+                "niche": profile.niche,
+                "superpower": profile.superpower,
+                "values": profile.values,
+                "enemies": profile.enemies
+            })
 
     elif step == 2:
-        st.subheader(step_titles[1])
-        st.write("На основе анализа конкурентов AI сформировал 'Матрицу 4-х Действий'. Проверьте и утвердите ее.")
+        st.write("На основе анализа конкурентов AI сформировал 'Матрицу 4-х Действий'. Это ваше уникальное позиционирование, которое выводит вас из 'алого океана' прямой конкуренции. Утвердите его.")
         if profile.positioning_matrix:
             st.json(profile.positioning_matrix)
         else:
             st.warning("Данные о позиционировании отсутствуют.")
     
     elif step == 3:
-        st.subheader(step_titles[2])
-        st.write("Это ваше уникальное позиционирование, которое выводит вас из 'алого океана' прямой конкуренции. Утвердите его.")
+        st.write("Визуальное представление 'Матрицы 4-х Действий'.")
         if profile.positioning_matrix:
             mat_col1, mat_col2 = st.columns(2)
             with mat_col1:
@@ -499,8 +499,7 @@ def render_strategic_wizard():
             st.warning("Данные о позиционировании отсутствуют.")
 
     elif step == 4:
-        st.subheader(step_titles[3])
-        st.write("Это последовательность ключевых действий для достижения ваших целей и 5 групп аудитории, с которыми нужно взаимодействовать. Утвердите этот план.")
+        st.write("Это последовательность ключевых действий (Roadmap) и 5 групп аудитории, с которыми нужно взаимодействовать. Утвердите этот план.")
         if profile.strategic_goals:
             strategy_data = profile.strategic_goals
             st.markdown("#### Дорожная Карта (Roadmap)")
@@ -510,10 +509,9 @@ def render_strategic_wizard():
             st.warning("Данные о дорожной карте отсутствуют.")
 
     elif step == 5:
-        st.subheader(step_titles[4])
         st.warning("ВНИМАНИЕ: Это самый важный шаг. Система проверила вашу стратегию на внутренние противоречия, которые могут привести к выгоранию.")
         
-        harmony_report = profile.harmony_report
+        harmony_report = profile.harmony_report if profile else None
         if harmony_report and "conflict_details" in harmony_report:
             st.error(harmony_report.get("report_text", "Отчет о гармонии неполный."))
         elif harmony_report:
