@@ -1,13 +1,14 @@
-streamlit==1.22.0
 fastapi
 uvicorn[standard]
 google-generativeai
 sqlalchemy
 psycopg2-binary
-pydantic
+pydantic[email]
 passlib[bcrypt]
 python-jose[cryptography]
 requests
 websockets
-st-pages==0.4.5
+st-pages
 streamlit-audiorec
+streamlit
+pandas
