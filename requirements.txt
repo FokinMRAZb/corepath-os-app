@@ -1,4 +1,10 @@
-streamlit
-google-generativeai
-pandas
-streamlit-audiorec
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+pydantic
+passlib[bcrypt]
+python-jose[cryptography]
+requests
+websockets
+st-pages
