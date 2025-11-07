@@ -1260,148 +1260,6 @@ def render_main_workspace():
                             with st.container(border=True):
                                 st.markdown(f"✅ ~~_{task.description}_~~")
 
-        with tab_capital: # Медийный Капитал
-            st.subheader("🏆 Медийный Капитал (Аудит Репутации)") # type: ignore
-
-            st.info("Ваша репутация — это актив для работы с партнерами, инвесторами и ключевыми фигурами (ЦА 3-5). Здесь мы проводим его инвентаризацию.")
-
-            # --- Модуль 6.1: Инвентаризация Медийного Веса ---
-            with st.expander("Блок 6.1: Инвентаризация Медийного Веса", expanded=True):
-                st.markdown("#### Формальные Регалии (Фундамент)")
-                st.session_state.client_profile.formal_regalia = st.text_area( # type: ignore # type: ignore
-                    "Образование, награды, звания, официальные титулы.",
-                    "\n".join(st.session_state.client_profile.formal_regalia),
-                    key="formal_regalia_input", help="Каждая регалия с новой строки."
-                ).splitlines() # type: ignore
-
-                st.markdown("#### Социальный Капитал (Сеть)") # type: ignore
-                st.session_state.client_profile.social_capital = st.text_area(
-                    "Список известных людей/брендов, с которыми вы работали или которые вас упоминают.",
-                    "\n".join(st.session_state.client_profile.social_capital),
-                    key="social_capital_input", help="Каждый пункт с новой строки."
-                ).splitlines() # type: ignore
-
-                st.markdown("#### «Живые Регалии» (Портфель Активов)")
-                st.caption("Ваши измеримые достижения: кейсы, отзывы, упоминания в СМИ, выступления. Добавляются через форму ниже.")
-            
-            # --- Модуль 6.2: Протокол «Аудита Прошлого» ---
-            with st.expander("Блок 6.2: Протокол «Аудита Прошлого» (Конфиденциально)"): # type: ignore
-                st.warning("Будьте абсолютно честны с собой. То, что мы знаем, мы можем контролировать.")
-                
-                if not st.session_state.client_profile.reputational_risks:
-                    st.session_state.client_profile.reputational_risks = [
-                        {"Риск": "Были ли у вас публичные конфликты?", "Есть": False, "Описание/Контр-аргумент": ""},
-                        {"Риск": "Существуют ли «неудобные» фото или видео из прошлого?", "Есть": False, "Описание/Контр-аргумент": ""},
-                        {"Риск": "Были ли у вас проблемы с законом или финансовые споры?", "Есть": False, "Описание/Кон-аргумент": ""},
-                        {"Риск": "Высказывали ли вы ранее мнения, противоречащие образу?", "Есть": False, "Описание/Контр-аргумент": ""},
-                        {"Риск": "Есть ли люди, которые могут иметь на вас «зуб»?", "Есть": False, "Описание/Контр-аргумент": ""},
-                    ]
-                
-
-                edited_risks = st.data_editor(st.session_state.client_profile.reputational_risks, key="risks_editor") # type: ignore
-                st.session_state.client_profile.reputational_risks = edited_risks
-
-            st.markdown("---")
-            st.subheader("💼 Управление Портфелем Активов")
-            with st.expander("➕ Добавить новый актив влияния"):
-                with st.form("influence_asset_form", clear_on_submit=True):
-                    asset_type_input = st.selectbox("Тип актива", ["Отзыв", "Кейс", "Упоминание в СМИ", "Выступление"])
-                    asset_title_input = st.text_input("Заголовок актива", placeholder="Например: 'Отзыв от клиента X о курсе'")
-                    uploaded_image_input = st.file_uploader("Загрузить изображение (опционально)", type=["png", "jpg", "jpeg"])
-                    asset_description_input = st.text_area("Описание / Текст актива", placeholder="Вставьте сюда текст отзыва, описание кейса или ссылку на публикацию.")
-                    asset_submitted = st.form_submit_button("Добавить в капитал")
-                    if asset_submitted:
-                        if asset_title_input and asset_description_input and st.session_state.client_profile and not st.session_state.offline_mode:
-                            profile_id = st.session_state.client_profile.profile_id
-                            api_url = f"http://127.0.0.1:8000/api/v1/profiles/{profile_id}/assets"
-                            headers = {"Authorization": f"Bearer {st.session_state.token}"}
-                            # В реальном приложении здесь была бы логика загрузки файла в S3
-                            # и получения image_url. Сейчас мы его просто проигнорируем.
-                            payload = {
-                                "title": asset_title_input,
-                                "asset_type": asset_type_input,
-                                "description": asset_description_input
-                            }
-                            
-                            response = requests.post(api_url, headers=headers, json=payload)
-                            if response.status_code == 201:
-                                st.session_state.influence_assets.append(response.json())
-                                st.toast(f"✅ Актив «{asset_title_input}» успешно добавлен!")
-                                st.rerun()
-                            else:
-                                st.error(f"Ошибка добавления: {response.text}")
-                        else:
-                            st.warning("Заголовок и описание не могут быть пустыми. Добавление доступно только в онлайн-режиме.")
-
-            if st.session_state.influence_assets:
-                for asset in reversed(st.session_state.influence_assets):
-                    with st.container(border=True):
-                        st.markdown(f"**{asset.get('title')}**")
-                        if asset.get('image_url'):
-                            st.image(asset.get('image_url'), width=300)
-                        st.caption(f"Тип: {asset.get('asset_type')}")
-                        st.write(asset.get('description'))
-                        if st.button("🗑️ Удалить актив", key=f"del_asset_{asset['asset_id']}", type="secondary"):
-                            api_url = f"http://127.0.0.1:8000/api/v1/assets/{asset['asset_id']}"
-                            headers = {"Authorization": f"Bearer {st.session_state.token}"}
-                            response = requests.delete(api_url, headers=headers)
-                            if response.status_code == 204:
-                                st.session_state.influence_assets = [a for a in st.session_state.influence_assets if a['asset_id'] != asset['asset_id']]
-                                st.toast(f"🗑️ Актив «{asset.get('title')}» удален.")
-                                st.rerun()
-                            else:
-                                st.error(f"Ошибка удаления: {response.text}")
-            else:
-                st.info("В вашем портфеле пока нет активов. Добавьте первый, используя форму выше.")
-
-        with tab_team: # Команда
-            st.subheader("👥 Командный Модуль (CorePath Team)")
-            st.info("Управляйте составом вашей проектной команды. Эти данные используются для назначения ответственных в модуле 'Задачи'.")
-
-            with st.expander("➕ Добавить нового члена команды"):
-                with st.form("team_member_form", clear_on_submit=True):
-                    member_name = st.text_input("Имя члена команды")
-                    member_role = st.text_input("Роль в проекте", placeholder="Например: Сценарист, Монтажер")
-                    member_tags = st.text_input("Теги (через запятую)", placeholder="#монтажер_reels, #сценарист_подкаст")
-                    
-                    member_submitted = st.form_submit_button("Добавить в команду")
-                    if member_submitted:
-                        if member_name and member_role and st.session_state.client_profile and not st.session_state.offline_mode:
-                            profile_id = st.session_state.client_profile.profile_id
-                            api_url = f"http://127.0.0.1:8000/api/v1/profiles/{profile_id}/team"
-                            headers = {"Authorization": f"Bearer {st.session_state.token}"}
-                            tags_list = [tag.strip() for tag in member_tags.split(',') if tag.strip()]
-                            payload = {"name": member_name, "role": member_role, "tags": tags_list}
-
-                            response = requests.post(api_url, headers=headers, json=payload)
-                            if response.status_code == 201:
-                                st.session_state.team_members.append(response.json())
-                                st.toast(f"✅ Участник «{member_name}» добавлен в команду!")
-                                st.rerun()
-                            else:
-                                st.error(f"Ошибка добавления: {response.text}")
-                        else:
-                            st.warning("Имя и роль не могут быть пустыми. Добавление доступно только в онлайн-режиме.")
-            
-            st.subheader("Состав команды")
-            if st.session_state.team_members:
-                for member in st.session_state.team_members:
-                    col_name, col_role, col_action = st.columns([2, 2, 1])
-                    col_name.write(member.get('name'))
-                    col_role.write(member.get('role'))
-                    if col_action.button("🗑️ Удалить", key=f"del_member_{member['member_id']}"):
-                        api_url = f"http://127.0.0.1:8000/api/v1/team/{member['member_id']}"
-                        headers = {"Authorization": f"Bearer {st.session_state.token}"}
-                        response = requests.delete(api_url, headers=headers)
-                        if response.status_code == 204:
-                            st.session_state.team_members = [m for m in st.session_state.team_members if m['member_id'] != member['member_id']]
-                            st.toast(f"🗑️ Участник «{member.get('name')}» удален.")
-                            st.rerun()
-                        else:
-                            st.error(f"Ошибка удаления: {response.text}")
-            else:
-                st.info("В вашей команде пока нет участников.")
-
         with tab_synergy:
             st.subheader("🤝 Модуль «Синергия»") # type: ignore
 
@@ -1669,6 +1527,28 @@ def render_main_workspace():
                             st.rerun()
                 else:
                     st.info("В вашей команде пока нет участников.")
+
+
+        with tab_messenger:
+            st.subheader("💬 Защищенный Мессенджер")
+            st.info("В разработке. Здесь будет чат для команды проекта.")
+
+            if not st.session_state.channels:
+                st.info("Для этого проекта еще не создано ни одного канала.")
+            else:
+                selected_channel_name = st.selectbox(
+                    "Выберите канал",
+                    [c['channel_name'] for c in st.session_state.channels]
+                )
+                # Здесь будет логика отображения сообщений выбранного канала
+                st.write(f"Отображение сообщений для канала: {selected_channel_name}")
+
+                # Пример поля для ввода сообщения
+                st.text_input("Ваше сообщение", key="messenger_input")
+                st.button("Отправить", key="messenger_send")
+
+
+
 
 
 # --- ГЛАВНЫЙ РОУТЕР ПРИЛОЖЕНИЯ ---
