@@ -3,11 +3,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 from typing import List, Dict
 from uuid import UUID
 from sqlalchemy.orm import Session
-from sqlalchemy import text, Column, String, ForeignKey, TEXT, NUMERIC, DATE, Boolean, TIMESTAMP # Добавляем TIMESTAMP
+from sqlalchemy import text, Column, String, ForeignKey, TEXT, NUMERIC, DATE, Boolean, TIMESTAMP
 from datetime import timedelta
 
 import schemas, models, auth
-from database import get_db, Base, engine # Импортируем все необходимые объекты
+from database import get_db, Base, engine
 from core_logic import IngestionEngine, BlueOceanEngine, StrategyEngine, CommerceEngine, HarmonyDiagnosticEngine
 
 # Создаем все таблицы в базе данных (при первом запуске)
@@ -114,7 +114,7 @@ def create_profile_from_questionnaire(
         # Шаг 2-N: Обогащение профиля другими движками
         profile_hub.positioning_matrix = blue_ocean_engine.process(profile_data.raw_text, profile_hub)
         profile_hub.strategic_goals = strategy_engine.process(profile_hub)
-        product_ladder = commerce_engine.process(profile_hub) # type: ignore
+        product_ladder = commerce_engine.process(profile_hub)
         if product_ladder:
             profile_hub.products = [asdict(p) for p in [product_ladder.lead_magnet, product_ladder.tripwire, product_ladder.core_offer, product_ladder.high_ticket] if p]
         profile_hub = harmony_engine.process(profile_hub)
