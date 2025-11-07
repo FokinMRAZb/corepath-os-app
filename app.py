@@ -1574,17 +1574,3 @@ elif not st.session_state.wizard_complete:
     render_strategic_wizard()
 else:
     render_main_workspace()
-
-
-# --- ГЛАВНЫЙ РОУТЕР ПРИЛОЖЕНИЯ ---
-if not st.session_state.token and not st.session_state.offline_mode:
-    render_login_screen()
-elif st.session_state.processing:
-    render_processing_overlay()
-elif not st.session_state.profile_generated:
-    # Если профиль не сгенерирован (и мы не в процессе), показываем стартовый экран
-    render_startup_screen()
-elif not st.session_state.wizard_complete:
-    render_strategic_wizard()
-else:
-    render_main_workspace()
