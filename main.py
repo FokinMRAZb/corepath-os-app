@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text, Column, String, ForeignKey, TEXT, NUMERIC, DATE, Boolean, TIMESTAMP
 from datetime import timedelta
 
-import schemas, models, auth
+from schemas import UserCreate, User, Token, TokenData, ClientProfile, ClientProfileCreate, ClientProfileUpdate, Task, TaskCreate, TaskUpdate, MessageBase, MessageCreate, ChannelBase, ChannelCreate, Channel, Message, ScenarioDecompositionRequest, ProductBase, ProductCreate, ProductUpdate, TeamMemberBase, TeamMember, InfluenceAssetBase, InfluenceAssetCreate, InfluenceAsset
 from database import get_db, Base, engine
 from core_logic import IngestionEngine, BlueOceanEngine, StrategyEngine, CommerceEngine, HarmonyDiagnosticEngine
 
@@ -114,7 +114,7 @@ def create_profile_from_questionnaire(
         # Шаг 2-N: Обогащение профиля другими движками
         profile_hub.positioning_matrix = blue_ocean_engine.process(profile_data.raw_text, profile_hub)
         profile_hub.strategic_goals = strategy_engine.process(profile_hub)
-        product_ladder = commerce_engine.process(profile_hub)
+        product_ladder = commerce_engine.process(profile_hub) # type: ignore
         if product_ladder:
             profile_hub.products = [asdict(p) for p in [product_ladder.lead_magnet, product_ladder.tripwire, product_ladder.core_offer, product_ladder.high_ticket] if p]
         profile_hub = harmony_engine.process(profile_hub)
@@ -292,6 +292,4 @@ def create_message_in_channel(channel_id: UUID, message: schemas.MessageCreate, 
     db.commit()
     db.refresh(db_message)
 
-# Проверьте, что все тройные кавычки (""" или ''') в вашем файле main.py закрыты.
-# Особенно внимательно посмотрите на строки вокруг 287-290.
     return db_message
