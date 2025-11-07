@@ -596,7 +596,7 @@ def render_main_workspace():
         
         # --- НОВЫЙ БЛОК: Уведомления ---
         notifications = generate_notifications()
-        if notifications: # type: ignore
+        if notifications:
             with st.expander("🔔 Уведомления", expanded=True):
                 for notification in notifications:
                     if notification["type"] == "warning":
@@ -652,7 +652,7 @@ def render_main_workspace():
         ]
         
         tabs = st.tabs(tab_list)
-        (tab_dashboard, tab_obraz_constructor, tab_strategy, tab_plan, tab_products, tab_content, tab_tasks, tab_messenger, tab_synergy) = tabs
+        (tab_dashboard, tab_obraz_constructor, tab_strategy, tab_plan, tab_products, tab_content, tab_tasks, tab_messenger, tab_synergy) = tabs # type: ignore
 
 
         with tab_dashboard:
@@ -1668,7 +1668,7 @@ elif st.session_state.processing:
     render_processing_overlay()
 elif not st.session_state.profile_generated:
     # Если профиль не сгенерирован (и мы не в процессе), показываем стартовый экран
-    render_startup_screen()
+    render_startup_screen() # type: ignore
 elif not st.session_state.wizard_complete:
     render_strategic_wizard()
 else:
