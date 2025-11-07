@@ -511,7 +511,7 @@ def render_strategic_wizard():
     elif step == 5:
         st.warning("ВНИМАНИЕ: Это самый важный шаг. Система проверила вашу стратегию на внутренние противоречия, которые могут привести к выгоранию.")
         
-        harmony_report = profile.harmony_report
+        harmony_report = profile.harmony_report if profile else None
         if harmony_report and "conflict_details" in harmony_report:
             st.error(harmony_report.get("report_text", "Отчет о гармонии неполный."))
         elif harmony_report:
@@ -519,19 +519,30 @@ def render_strategic_wizard():
         else:
             st.warning("Отчет о гармонии не был сгенерирован.")
 
-    # ... здесь будут другие шаги
-
     else:
         st.success("Все шаги верификации пройдены!")
         if st.button("Перейти к Рабочему Пространству"):
             st.session_state.wizard_complete = True
             st.rerun()
 
-    # Кнопки навигации
-    if step < 5: # Замените 5 на 11, когда все шаги будут готовы
-        if st.button("✅ Утвердить и перейти к следующему шагу", type="primary"):
-            st.session_state.strategic_step += 1
-            st.rerun()
+    # --- Кнопки навигации (вынесены за пределы if/elif) ---
+    nav_col1, nav_col2 = st.columns([1, 1])
+    with nav_col1:
+        if step > 1:
+            if st.button("← Назад"):
+                st.session_state.strategic_step -= 1
+                st.rerun()
+    
+    with nav_col2:
+        # Замените 5 на 11, когда все шаги будут готовы
+        if step < 5: 
+            if st.button("✅ Утвердить и перейти к следующему шагу", type="primary"):
+                st.session_state.strategic_step += 1
+                st.rerun()
+        elif step == 5: # Последний шаг в текущей реализации
+             if st.button("✅ Завершить верификацию и перейти в Workspace", type="primary"):
+                st.session_state.wizard_complete = True
+                st.rerun()
 
 def render_main_workspace():
     # --- ЭТАП 2: ОСНОВНОЕ РАБОЧЕЕ ПРОСТРАНСТВО ---
