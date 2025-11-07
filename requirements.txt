@@ -8,5 +8,5 @@ passlib[bcrypt]
 python-jose[cryptography]
 requests
 websockets
-st-pages
+st-pages==0.4.5
 streamlit-audiorec
