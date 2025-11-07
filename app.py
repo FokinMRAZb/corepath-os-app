@@ -396,18 +396,21 @@ def render_processing_overlay():
                     if st.session_state.offline_mode:
                         profile, product_ladder = run_offline_processing(status)
                         
-                        # 3. Сохранение результатов в сессию
+                        # Обновляем статус в UI
                         status.update(label="✅ Диагностика завершена! Сохраняю результаты...", state="complete", expanded=False)
-                        st.session_state.client_profile = profile
-                        st.session_state.scenario_producer = AIScenarioProducer(offline_mode=True)
-                        st.session_state.calendar_engine = CalendarEngine(offline_mode=True)
-                        if product_ladder:
-                            st.session_state.client_profile.products = [asdict(p) for p in [product_ladder.lead_magnet, product_ladder.tripwire, product_ladder.core_offer, product_ladder.high_ticket] if p]
-                            st.session_state.product_ladder = product_ladder
-                        
-                        st.session_state.profile_generated = True
-                        st.session_state.processing = False
-                        st.rerun()
+
+                    # 3. Сохранение результатов в сессию (вне блока st.status)
+                    st.session_state.client_profile = profile
+                    st.session_state.scenario_producer = AIScenarioProducer(offline_mode=True)
+                    st.session_state.calendar_engine = CalendarEngine(offline_mode=True)
+                    if product_ladder:
+                        st.session_state.client_profile.products = [asdict(p) for p in [product_ladder.lead_magnet, product_ladder.tripwire, product_ladder.core_offer, product_ladder.high_ticket] if p]
+                        st.session_state.product_ladder = product_ladder
+                    
+                    st.session_state.profile_generated = True
+                    st.session_state.processing = False
+                    st.session_state.strategic_step = 1 # Переход к первому шагу мастера стратегии
+                    st.rerun()
 
                     else: # Онлайн-режим
                         status.write("Отправка данных на сервер для анализа...")
