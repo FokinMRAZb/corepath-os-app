@@ -141,6 +141,61 @@ if 'selected_channel_id' not in st.session_state:
 if 'producer_tasks' not in st.session_state:
     st.session_state.producer_tasks = []
 
+def run_offline_processing(status):
+    """
+    Выполняет весь цикл диагностики в оффлайн-режиме, используя мок-данные.
+    """
+    # Инициализация движков
+    ingestion_engine = IngestionEngine(offline_mode=True)
+    blue_ocean_engine = BlueOceanEngine(offline_mode=True)
+    strategy_engine = StrategyEngine(offline_mode=True)
+    commerce_engine = CommerceEngine(offline_mode=True)
+    harmony_engine = HarmonyDiagnosticEngine()
+    show_pitch_engine = ShowPitchEngine(offline_mode=True)
+    format_engine = FormatEngine(offline_mode=True)
+    content_plan_engine = ContentPlanEngine(offline_mode=True)
+
+    # Шаг 1: Поглощение и создание базового профиля
+    status.write("🚀 Запуск Движка Поглощения...")
+    client_profile = ingestion_engine.process(st.session_state.raw_text)
+    if not client_profile:
+        raise ValueError("Не удалось создать профиль в оффлайн-режиме.")
+
+    # Шаг 2: Матрица 4-х Действий (Blue Ocean)
+    status.write("🌊 Запуск Движка Голубого Океана...")
+    client_profile.positioning_matrix = blue_ocean_engine.process("Текст про конкурентов...", client_profile)
+
+    # Шаг 3: Roadmap и 5 Групп ЦА
+    status.write("🗺️ Запуск Движка Стратегии...")
+    strategy_data = strategy_engine.process(client_profile)
+    if strategy_data:
+        client_profile.strategic_goals = strategy_data
+        client_profile.audience_groups = strategy_data.get("audience_groups", {})
+
+    # Шаг 4: Проектирование продуктовой линейки
+    status.write("💰 Запуск Движка Коммерции (ПТУ)...")
+    product_ladder = commerce_engine.process(client_profile)
+    if product_ladder:
+        # Convert Product dataclasses to dicts for ClientProfileHub
+        client_profile.products = [asdict(p) for p in [product_ladder.lead_magnet, product_ladder.tripwire, product_ladder.core_offer, product_ladder.high_ticket] if p]
+
+    # Шаг 5: Диагностика Гармонии
+    status.write("🧘 Запуск Движка Диагностики Гармонии...")
+    client_profile = harmony_engine.process(client_profile)
+
+    # Шаг 6: Питч флагманского шоу
+    status.write("🎬 Запуск Движка Драматургии...")
+    client_profile.show_pitch = show_pitch_engine.process(client_profile)
+
+    # Шаг 7: Библиотека форматов
+    status.write("📚 Запуск Движка Форматов...")
+    client_profile.formats = format_engine.process(client_profile)
+
+    # Шаг 8: Контент-план
+    status.write("🗓️ Запуск Движка Контент-Плана...")
+    client_profile.content_plan = content_plan_engine.process(client_profile)
+
+    return client_profile, product_ladder
 
 # --- УЛУЧШЕНИЕ: ЛОГИКА ОТОБРАЖЕНИЯ СТАРТОВОГО ЭКРАНА ИЛИ РАБОЧЕГО ПРОСТРАНСТВА ---
 # Объявляем колонки в самом начале, чтобы они были видны везде
@@ -153,7 +208,14 @@ def run_full_diagnostic():
 def run_demo_mode():
     """Функция для мгновенного запуска в Демо-режиме."""
     st.session_state.offline_mode = True
-    st.session_state.raw_text = "Демонстрационный запуск" # Добавляем текст-заглушку
+    # Предоставляем более полный моковый raw_text для демонстрации
+    st.session_state.raw_text = """
+    Текст из Мастер-Опросника... Моя манера общения - провокационная, но с позиции наставника. 
+    Я часто повторяю фразы "Работаем", "Это база". 
+    Ненавижу, когда говорят "короче".
+    Мои конкуренты - это те, кто продает "успешный успех" без системы. Они делают много шума, но мало реальной ценности.
+    Я хочу упразднить ручную "распаковку" экспертов, снизить время на онбординг, повысить глубину стратегической проработки и создать автоматизированный "Стратегический МРТ-сканер".
+    """
     st.session_state.processing = True
     st.rerun()
 
