@@ -140,6 +140,8 @@ if 'selected_channel_id' not in st.session_state:
     st.session_state.selected_channel_id = None
 if 'producer_tasks' not in st.session_state:
     st.session_state.producer_tasks = []
+if 'wizard_notification_shown' not in st.session_state:
+    st.session_state.wizard_notification_shown = False
 
 def run_offline_processing(status):
     """
@@ -584,7 +586,14 @@ def render_main_workspace():
         # --- НОВЫЙ БЛОК: Уведомления ---
         notifications = generate_notifications()
         if notifications:
-            st.subheader("🔔 Уведомления")
+            with st.expander("🔔 Уведомления", expanded=True):
+                for notification in notifications:
+                    if notification["type"] == "warning":
+                        st.warning(notification["text"])
+                    elif notification["type"] == "success":
+                        st.success(notification["text"])
+                    else:
+                        st.info(notification["text"])
 
         with st.expander("Поиск по проекту"):
             search_term = st.text_input("Найти...", label_visibility="collapsed")
