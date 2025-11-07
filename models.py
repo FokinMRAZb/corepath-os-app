@@ -149,8 +149,7 @@ class Message(Base):
     channel_id = Column(UUID(as_uuid=True), ForeignKey('channels.channel_id', ondelete='CASCADE'), nullable=False)
     sender_id = Column(UUID(as_uuid=True), ForeignKey('users.user_id', ondelete='CASCADE'), nullable=False)
     content = Column(TEXT, nullable=False)
-    message_type = Column(String(50), default='text')
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now()) # Используем TIMESTAMP(timezone=True)
-
+    message_type = Column(String(50), default='text') # type: ignore
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now()) # type: ignore
     channel = relationship("Channel", back_populates="messages")
     sender = relationship("User", back_populates="sent_messages")
