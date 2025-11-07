@@ -137,10 +137,10 @@ class Message:
     """
     Представляет одно сообщение в канале.
     """
-    message_id: UUID = field(default_factory=uuid4)
     channel_id: UUID
     sender_id: UUID
     content: str
+    message_id: UUID = field(default_factory=uuid4)
     message_type: str = "text"
 
 # ==============================================================================
