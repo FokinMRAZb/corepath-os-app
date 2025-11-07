@@ -379,7 +379,12 @@ def render_processing_overlay():
             st.markdown("<h2 style='text-align: center;'>Идет глубокий анализ...</h2>", unsafe_allow_html=True)
             st.info("Пожалуйста, подождите. Система F.O.K.I.N. обрабатывает ваши данные. Это может занять несколько минут.")
 
-            with st.status("Запускаю полный цикл диагностики...", expanded=True) as status:
+            # Флаги для контроля действий после завершения обработки
+            should_rerun = False
+            temp_profile = None
+            temp_product_ladder = None
+
+            with st.status("Запускаю полный цикл диагностики...", expanded=True) as status: # type: ignore
                 try:
                     # 1. Подготовка текста
                     if not st.session_state.raw_text and st.session_state.interview_answers:
@@ -394,22 +399,9 @@ def render_processing_overlay():
 
                     # 2. Выполнение диагностики (онлайн или оффлайн)
                     if st.session_state.offline_mode:
-                        profile, product_ladder = run_offline_processing(status)
-                        
+                        temp_profile, temp_product_ladder = run_offline_processing(status)
                         status.update(label="✅ Диагностика завершена! Сохраняю результаты...", state="complete", expanded=False)
-
-                        # 3. Сохранение результатов в сессию
-                        st.session_state.client_profile = profile
-                        st.session_state.scenario_producer = AIScenarioProducer(offline_mode=True)
-                        st.session_state.calendar_engine = CalendarEngine(offline_mode=True)
-                        if product_ladder:
-                            st.session_state.client_profile.products = [asdict(p) for p in [product_ladder.lead_magnet, product_ladder.tripwire, product_ladder.core_offer, product_ladder.high_ticket] if p]
-                            st.session_state.product_ladder = product_ladder
-                        
-                        st.session_state.profile_generated = True
-                        st.session_state.processing = False
-                        st.session_state.strategic_step = 1 # Переход к первому шагу мастера стратегии
-                        st.rerun()
+                        should_rerun = True
 
                     else: # Онлайн-режим
                         status.write("Отправка данных на сервер для анализа...")
@@ -419,11 +411,9 @@ def render_processing_overlay():
 
                         if response.status_code == 201:
                             profile_data = response.json()
-                            st.session_state.client_profile = ClientProfileHub(**profile_data)
-                            st.session_state.profile_generated = True
-                            st.session_state.processing = False
+                            temp_profile = ClientProfileHub(**profile_data)
                             status.update(label="✅ Профиль успешно создан на сервере!", state="complete")
-                            st.rerun()
+                            should_rerun = True
                         else:
                             raise ValueError(f"Ошибка сервера: {response.status_code} - {response.text}")
 
@@ -433,6 +423,22 @@ def render_processing_overlay():
                     st.error(f"Произошла ошибка: {e}")
                     if st.button("Попробовать снова"):
                         st.rerun()
+
+            # --- Действия после завершения блока st.status ---
+            if should_rerun:
+                st.session_state.client_profile = temp_profile
+                st.session_state.scenario_producer = AIScenarioProducer(offline_mode=st.session_state.offline_mode)
+                st.session_state.calendar_engine = CalendarEngine(offline_mode=st.session_state.offline_mode)
+                
+                # Обновляем product_ladder только если он был сгенерирован (в оффлайн-режиме)
+                if st.session_state.offline_mode and temp_product_ladder:
+                    st.session_state.client_profile.products = [asdict(p) for p in [temp_product_ladder.lead_magnet, temp_product_ladder.tripwire, temp_product_ladder.core_offer, temp_product_ladder.high_ticket] if p]
+                    st.session_state.product_ladder = temp_product_ladder
+                
+                st.session_state.profile_generated = True
+                st.session_state.processing = False
+                st.session_state.strategic_step = 1 # Переход к первому шагу мастера стратегии
+                st.rerun()
 
 def render_strategic_wizard():
     """
