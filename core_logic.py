@@ -20,6 +20,7 @@ class ClientProfileHub:
     brand_name: Optional[str] = None
     niche: List[str] = field(default_factory=list)
     superpower: Optional[str] = None
+    strategic_goals_list: Dict[str, Any] = field(default_factory=dict)
     gz: List[Dict[str, Any]] = field(default_factory=list)
     # --- НОВЫЕ ПОЛЯ ДЛЯ АРХИТЕКТУРЫ «ОБРАЗА» ---
     emotion_matrix: List[Dict[str, str]] = field(default_factory=list)
@@ -93,6 +94,9 @@ class Product:
     name: str
     price: float
     purpose: str
+    description: Optional[str] = "" # Для вкладки "Суть"
+    target_audience: Optional[str] = "" # Для вкладки "ЦА"
+    usp: Optional[str] = "" # Для вкладки "УТП"
 
 @dataclass
 class ProductValueLadder:
@@ -116,6 +120,28 @@ class Task:
     deadline: Optional[date] = None
     comments: List[Comment] = field(default_factory=list)
     attachments: List[Attachment] = field(default_factory=list)
+
+@dataclass
+class Channel:
+    """
+    Представляет один канал/чат в мессенджере.
+    """
+    channel_id: UUID = field(default_factory=uuid4)
+    profile_id: UUID
+    channel_name: str
+    channel_type: str = "group" # 'group' or 'direct'
+    members: List[UUID] = field(default_factory=list) # List of user_ids
+
+@dataclass
+class Message:
+    """
+    Представляет одно сообщение в канале.
+    """
+    message_id: UUID = field(default_factory=uuid4)
+    channel_id: UUID
+    sender_id: UUID
+    content: str
+    message_type: str = "text"
 
 # ==============================================================================
 # --- БЛОК 1.5: ДАННЫЕ ДЛЯ КОНСТРУКТОРА "8 ОПОРНЫХ ТОЧЕК" ---
@@ -164,30 +190,103 @@ ANCHOR_POINTS_DATA = {
 
 class IngestionEngine:
     """Реализует "Движок Поглощения" (Шаг 1, Фаза F)."""
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, offline_mode: bool = False):
         self.api_key = api_key
+        self.offline_mode = offline_mode
         if api_key:
             genai.configure(api_key=api_key)
             
     def _get_mock_profile(self) -> ClientProfileHub:
         print("⚠️ API-ключ не предоставлен. Возвращается симулированный профиль.")
-        return ClientProfileHub(
+        # --- Расширенные моковые данные для демонстрации ---
+        mock_verbal_code = {
+            "anchor_phrases": "Работаем, Это база, Думай, Какой хороший вопрос",
+            "communication_style": "Авторитетный",
+            "profanity_use": "В Исключениях",
+            "forbidden_words": "короче, как бы, в принципе",
+            "professional_jargon": "MVP: Minimum Viable Product - минимально жизнеспособный продукт.\nFOKIN: Foundation, Orchestration, Kinetic, Influence, Nexus - методология.",
+            "accent_words": "База, Система, Нексус",
+            "favorite_quotes": "Только тот, кто готов рискнуть...",
+            "synonym_words": "хорошо: великолепно, мощно, эффективно"
+        }
+        
+        mock_visual_identity = {
+            'base_palette': "Черный, Серый, Темно-синий",
+            'accent_palette': "Красный",
+            'visual_anchors': "Очки определенной оправы\nЧасы (Скрытый Премиум)",
+            'clothing_style': "Tech Minimalist",
+            'look_collection': [
+                {"Название «Лука»": "ЭКСПЕРТ", "Позиционирование / Задача": "Трансляция авторитета, власти", "Ключевые Элементы": "Темно-синий блейзер, качественная футболка", "Акцент / Аксессуар": "Часы", "Когда Использовать": "Вебинары, B2B-переговоры"},
+                {"Название «Лука»": "ПРОВОКАТОР", "Позиционирование / Задача": "Трансляция энергии, 'пиковых эмоций'", "Ключевые Элементы": "Черная водолазка, кожаная куртка", "Акцент / Аксессуар": "Красный браслет", "Когда Использовать": "Конфликтный контент, шоу"},
+                {"Название «Лука»": "СВОЙ ПАРЕНЬ", "Позиционирование / Задача": "Трансляция эмпатии, аутентичности", "Ключевые Элементы": "Серая футболка, худи, джинсы", "Акцент / Аксессуар": "Отсутствие ярких акцентов", "Когда Использовать": "Лайфстайл-контент, сторис"},
+                {"Название «Лука»": "НАСТАВНИК", "Позиционирование / Задача": "Сочетание авторитета и эмпатии", "Ключевые Элементы": "Качественный свитер, светлая рубашка", "Акцент / Аксессуар": "Очки, блокнот", "Когда Использовать": "Обучающие лекции, разбор кейсов"},
+            ]
+        }
+
+        mock_competencies = {
+            "superpowers": ["Системное мышление", "Стратегический анализ", "Создание методологий", "Дар убеждать"],
+            "growth_zones": ["Делегирование", "Публичные выступления", "Монтаж видео"]
+        }
+
+        mock_superpower_application = [
+            {"Инструмент / Суперсила": "Системное мышление", "Связанная Цель": "Автоматизировать онбординг", "Механизм Помощи": "Проектирование архитектуры приложения"},
+            {"Инструмент / Суперсила": "Дар убеждать", "Связанная Цель": "Привлечь инвесторов", "Механизм Помощи": "Питчинг, переговоры"},
+        ]
+
+        mock_reputational_risks = [
+            {"Риск": "Были ли у вас публичные конфликты?", "Есть": True, "Описание/Контр-аргумент": "Конфликт с блогером N. Позиция: отстаивал качество против хайпа. Аргументы готовы."},
+            {"Риск": "Существуют ли «неудобные» фото или видео из прошлого?", "Есть": False, "Описание/Контр-аргумент": ""},
+            {"Риск": "Были ли у вас проблемы с законом или финансовые споры?", "Есть": False, "Описание/Контр-аргумент": ""},
+            {"Риск": "Высказывали ли вы ранее мнения, противоречащие образу?", "Есть": False, "Описание/Контр-аргумент": ""},
+            {"Риск": "Есть ли люди, которые могут иметь на вас «зуб»?", "Есть": False, "Описание/Контр-аргумент": ""},
+        ]
+
+        mock_influence_capital = [
+            InfluenceAsset(title="Кейс 'Запуск CorePath OS'", asset_type="Кейс", description="Успешный запуск SaaS-платформы с выходом на 1000+ пользователей за 3 месяца."),
+            InfluenceAsset(title="Отзыв от клиента 'Альфа'", asset_type="Отзыв", description="'Работа с Валентином полностью изменила наш подход к маркетингу...'"),
+            InfluenceAsset(title="Упоминание в Forbes", asset_type="Упоминание в СМИ", description="Статья о методологии F.O.K.I.N. в разделе 'Технологии'.")
+        ]
+
+        mock_team = [
+            TeamMember(name="Иван Петров", role="Монтажер"),
+            TeamMember(name="Елена Сидорова", role="Сценарист"),
+            TeamMember(name="Дмитрий Козлов", role="Оператор"),
+        ]
+
+        profile = ClientProfileHub(
             brand_name="Валентин Фокин (Мок)",
             niche=["Стратегический консалтинг", "Продюсирование экспертов"],
             superpower="Создание авторских методологий и превращение их в технологические продукты.",
             gz=[{"goal": "Запустить 5 пилотных проектов", "stress_reduction": 0.8}, {"goal": "Автоматизировать онбординг", "stress_reduction": 0.6}],
             values=["Системность", "Инновации", "Честность", "Масштабирование"],
             enemies=["Поверхностный подход", "Инфоцыганство", "Выгорание от рутины"],
-            style_voice={
-                "tone_of_voice": "Провокационный / Наставнический",
-                "anchor_phrases": ["Работаем.", "Это база.", "Думай."],
-                "forbidden_words": ["короче", "как бы"]
-            }
+            style_voice={"tone_of_voice": "Провокационный / Наставнический"}, # Это поле заполняется из verbal_code
+            # --- РАСШИРЕННЫЕ ДЕМО-ДАННЫЕ ---
+            emotion_matrix=[
+                {"Эмоция": "Гнев (Anger)", "Триггер": "Некомпетентность", "Внутреннее Ощущение": "Прилив энергии", "Внешнее Проявление": "Прямая критика", "Якорная Фраза": "Это просто жесть"}
+            ],
+            peak_emotions=["Гнев (Anger)"], # Заполняется из emotion_matrix
+            verbal_code=mock_verbal_code,
+            competencies=mock_competencies,
+            visual_identity=mock_visual_identity,
+            superpower_application=mock_superpower_application,
+            formal_regalia=["Высшее образование (МГУ)", "Спикер конференции 'Digital-2024'"],
+            social_capital=["Работал с 'Технопарк Сколково'", "Упоминание в Forbes"],
+            reputational_risks=mock_reputational_risks,
+            influence_capital=mock_influence_capital,
+            team=mock_team,
+            strategic_goals_list={
+                "main_goal": "2 варианта: 1) 5 клиентов на 'Продюсирование' (по 250к/мес). 2) 'стабильный 20 000$ в месяц' с 'Приложения-сценариста'",
+                "business_goals": "Текущий доход: 350-400к/мес. Цель на 1 год: 2.5 млн/мес",
+                "media_goals": "Приглашения как эксперта, узнаваемость на улице",
+                "mission": "Изменить 'образовательную систему', дав детям 'возможность безопасно пробовать нечто новое'"
+            ]
         )
+        return profile
 
     @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_extraction(self, raw_text: str) -> Optional[ClientProfileHub]:
-        if not self.api_key:
+        if self.offline_mode or not self.api_key:
             return self._get_mock_profile() # Используем мок-данные, если нет API-ключа
 
         print("\n🤖 [Real AI] Извлечение профиля через Gemini API...")
@@ -242,8 +341,9 @@ class IngestionEngine:
 
 class BlueOceanEngine:
     """Реализует "Движок Голубого Океана" (Шаг 3, Фаза O)."""
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, offline_mode: bool = False):
         self.api_key = api_key
+        self.offline_mode = offline_mode
         if api_key:
             genai.configure(api_key=api_key)
             
@@ -258,7 +358,7 @@ class BlueOceanEngine:
 
     @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_matrix(self, raw_text: str, client_profile: ClientProfileHub) -> Optional[Dict[str, List[str]]]:
-        if not self.api_key:
+        if self.offline_mode or not self.api_key:
             return self._get_mock_matrix()
 
         print("\n🤖 [Real AI] Генерация Матрицы 4-х Действий через Gemini API...")
@@ -302,8 +402,9 @@ class BlueOceanEngine:
 
 class StrategyEngine:
     """Реализует "Движок Стратегии" (Шаг 3, Фаза O)."""
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, offline_mode: bool = False):
         self.api_key = api_key
+        self.offline_mode = offline_mode
         if api_key:
             genai.configure(api_key=api_key)
             
@@ -327,7 +428,7 @@ class StrategyEngine:
 
     @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_roadmap(self, profile: ClientProfileHub) -> Optional[Dict[str, Any]]:
-        if not self.api_key:
+        if self.offline_mode or not self.api_key:
             return self._get_mock_roadmap()
 
         print("\n🤖 [Real AI] Генерация Roadmap и 5 Групп ЦА через Gemini API...")
@@ -418,23 +519,24 @@ class HarmonyDiagnosticEngine:
 
 class CommerceEngine:
     """Реализует Модуль Коммерции "ПТУ" (Часть V)."""
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, offline_mode: bool = False):
         self.api_key = api_key
+        self.offline_mode = offline_mode
         if api_key:
             genai.configure(api_key=api_key)
             
     def _get_mock_pvl(self) -> ProductValueLadder:
         print("⚠️ API-ключ не предоставлен. Возвращается симулированная Лестница Ценности.")
         return ProductValueLadder(
-            lead_magnet=Product(name="Чек-лист '5 грехов в контенте' (Мок)", price=0, purpose="Сбор Лидов"),
-            tripwire=Product(name="Мини-курс 'Стратегия первого шага' (Мок)", price=49, purpose="Конверсия в Покупателя"),
-            core_offer=Product(name="Курс 'CorePath OS' (Мок)", price=1990, purpose="Основная Прибыль"),
-            high_ticket=Product(name="Менторство 'Архитектор Наследия' (Мок)", price=15000, purpose="Максимизация LTV")
+            lead_magnet=Product(name="Чек-лист '5 грехов в контенте' (Мок)", price=0, purpose="Сбор Лидов", description="PDF-файл с разбором типичных ошибок, которые убивают охваты.", target_audience="Начинающие эксперты", usp="Быстро, бесплатно, полезно."),
+            tripwire=Product(name="Мини-курс 'Стратегия первого шага' (Мок)", price=49, purpose="Конверсия в Покупателя", description="Серия из 3-х видео-уроков, помогающая определить свою нишу и УТП.", target_audience="Эксперты с доходом <100к/мес", usp="Низкая цена, высокий результат за короткий срок."),
+            core_offer=Product(name="Курс 'CorePath OS' (Мок)", price=1990, purpose="Основная Прибыль", description="Полноценный курс по методологии F.O.K.I.N. с доступом к платформе.", target_audience="Продюсеры, маркетологи, опытные эксперты", usp="Единственная системная методология на рынке."),
+            high_ticket=Product(name="Менторство 'Архитектор Наследия' (Мок)", price=15000, purpose="Максимизация LTV", description="Личная работа по построению долгосрочной стратегии и созданию 'Наследия'.", target_audience="Топ-эксперты и владельцы бизнеса", usp="Личный контакт, максимальная кастомизация.")
         )
 
     @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_pvl_design(self, profile: ClientProfileHub) -> Optional[ProductValueLadder]:
-        if not self.api_key:
+        if self.offline_mode or not self.api_key:
             return self._get_mock_pvl()
 
         print("\n🤖 [Real AI] Проектирование Лестницы Ценности Продукта через Gemini API...")
@@ -485,8 +587,9 @@ class CommerceEngine:
 
 class AIScenarioProducer:
     """Реализует "AI-Сценарный Продюсер" (Часть IV)."""
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, offline_mode: bool = False):
         self.api_key = api_key
+        self.offline_mode = offline_mode
         if api_key:
             genai.configure(api_key=api_key)
             
@@ -518,7 +621,7 @@ class AIScenarioProducer:
 
     @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_script_generation(self, profile: ClientProfileHub, anchor_points: Dict, product: Optional[Product] = None) -> Optional[Dict[str, str]]:
-        if not self.api_key:
+        if self.offline_mode or not self.api_key:
             return self._get_mock_script(profile, product)
 
         print("\n🤖 [Real AI] Генерация сценария через Gemini API...")
@@ -556,7 +659,7 @@ class AIScenarioProducer:
         **Constraint 1 (Anti-Swipe):** Use: Шок -> Хук -> Контент -> CTA.
         **Constraint 2 (Product-Led):** If a product is mentioned, the CTA must lead to it.
         **Constraint 3 (Verbal Code):** The script MUST include one of these anchor phrases: {profile.style_voice.get('anchor_phrases', [])}. Do not use forbidden words: {profile.style_voice.get('forbidden_words', [])}.
-        """
+        """ # type: ignore
         print("--- Сформированный Промпт для AI (симуляция) ---")
         print(prompt)
 
@@ -584,12 +687,58 @@ class AIScenarioProducer:
             print("✅ Сценарий успешно сгенерирован!")
         return script
 
+    @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
+    def process_surprise_me(self, profile: ClientProfileHub) -> Optional[Dict[str, str]]:
+        """
+        Генерирует сценарий в режиме "Удиви меня!", основываясь на ключевых
+        аспектах профиля, чтобы побороть творческое выгорание.
+        """
+        if self.offline_mode or not self.api_key:
+            print("⚠️ API-ключ не предоставлен. Возвращается симулированный 'сюрприз'-сценарий.")
+            return {
+                "title": "Неожиданный Поворот (Мок)",
+                "shock": "*Экран темный. Слышен только звук тикающих часов.*",
+                "hook": f'(Голос, устало): "Снова дедлайн, а в голове пусто? Знакомо." (пауза) "А что, если я скажу, что ваш главный враг - {profile.enemies[0] if profile.enemies else "рутина"} - это ваше топливо?"',
+                "content": f'(Энергично, меняется музыка): "Ваша ценность - {profile.values[0] if profile.values else "системность"}. Перестаньте бороться, начните использовать! Вот как: 1. Найдите в рутине паттерн. 2. Опишите его. 3. Превратите в мем. Вы только что создали контент из ничего!"',
+                "cta": "Хотите больше таких 'взломов мозга'? Подпишитесь, здесь мы превращаем выгорание в креатив."
+            }
+
+        print("\n🤖 [Real AI] Генерация 'Удиви меня!' сценария через Gemini API...")
+        prompt = f"""
+        You are a creative producer trying to help a burnt-out client. Your task is to generate a surprising and easy-to-implement script idea for a short video.
+        The output MUST be a valid JSON object with keys: "title", "shock", "hook", "content", "cta".
+        The idea should be based on the client's core values or their "enemies" (what they fight against). It should feel unexpected and require minimal creative effort from the client.
+        Do not add any text or explanations before or after the JSON object.
+
+        **Client Profile:**
+        - Core Values: {', '.join(profile.values)}
+        - Enemies (what they fight against): {', '.join(profile.enemies)}
+        - Superpower: {profile.superpower}
+
+        **Task:** Generate a surprising script idea.
+        """
+        try:
+            safety_settings = {
+                'HARM_CATEGORY_HARASSMENT': 'BLOCK_ONLY_HIGH',
+                'HARM_CATEGORY_HATE_SPEECH': 'BLOCK_ONLY_HIGH',
+                'HARM_CATEGORY_SEXUALLY_EXPLICIT': 'BLOCK_ONLY_HIGH',
+                'HARM_CATEGORY_DANGEROUS_CONTENT': 'BLOCK_ONLY_HIGH',
+            }
+            model = genai.GenerativeModel('gemini-pro-latest')
+            response = model.generate_content(prompt, safety_settings=safety_settings)
+            cleaned_response = response.text.strip().replace("```json", "").replace("```", "")
+            return json.loads(cleaned_response)
+        except Exception as e:
+            print(f"❌ Ошибка при генерации 'Удиви меня!' сценария: {e}")
+            raise e
+
 class InterviewEngine:
     """
     Реализует "AI-Интервьюера" для проведения углубленного диалога с пользователем.
     """
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, offline_mode: bool = False):
         self.api_key = api_key
+        self.offline_mode = offline_mode
         if api_key:
             genai.configure(api_key=api_key)
 
@@ -598,7 +747,7 @@ class InterviewEngine:
         """
         Генерирует уточняющий вопрос на основе предыдущего ответа пользователя.
         """
-        if not self.api_key:
+        if self.offline_mode or not self.api_key:
             print("⚠️ API-ключ не предоставлен. Уточняющий вопрос не будет сгенерирован.")
             return "Спасибо, принято. Можете переходить к следующему вопросу."
 
@@ -633,8 +782,9 @@ class InterviewEngine:
 
 class ShowPitchEngine:
     """Реализует "Движок Драматургии" для создания питча флагманского шоу (Шаг 7)."""
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, offline_mode: bool = False):
         self.api_key = api_key
+        self.offline_mode = offline_mode
         if api_key:
             genai.configure(api_key=api_key)
 
@@ -657,7 +807,7 @@ class ShowPitchEngine:
 
     @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_pitch(self, profile: ClientProfileHub) -> Optional[Dict[str, Any]]:
-        if not self.api_key:
+        if self.offline_mode or not self.api_key:
             return self._get_mock_pitch()
 
         print("\n🤖 [Real AI] Проектирование Питча Шоу через Gemini API...")
@@ -701,8 +851,9 @@ class ShowPitchEngine:
 
 class FormatEngine:
     """Реализует "Движок Форматов" для создания библиотеки поддерживающих форматов (Шаг 8)."""
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, offline_mode: bool = False):
         self.api_key = api_key
+        self.offline_mode = offline_mode
         if api_key:
             genai.configure(api_key=api_key)
 
@@ -729,7 +880,7 @@ class FormatEngine:
 
     @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_formats(self, profile: ClientProfileHub) -> Optional[List[Dict[str, Any]]]:
-        if not self.api_key:
+        if self.offline_mode or not self.api_key:
             return self._get_mock_formats()
 
         print("\n🤖 [Real AI] Генерация Библиотеки Форматов через Gemini API...")
@@ -771,8 +922,9 @@ class FormatEngine:
 
 class ContentPlanEngine:
     """Реализует "Движок Контент-Плана" для создания недельного плана (Шаг 10)."""
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, offline_mode: bool = False):
         self.api_key = api_key
+        self.offline_mode = offline_mode
         if api_key:
             genai.configure(api_key=api_key)
 
@@ -790,7 +942,7 @@ class ContentPlanEngine:
 
     @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_plan(self, profile: ClientProfileHub) -> Optional[List[Dict[str, str]]]:
-        if not self.api_key:
+        if self.offline_mode or not self.api_key:
             return self._get_mock_plan()
 
         print("\n🤖 [Real AI] Генерация Контент-Плана на неделю через Gemini API...")
@@ -835,8 +987,9 @@ class SynergyEngine:
     """
     Реализует "Движок Синергии" для поиска коллабораций между клиентами (Фаза O).
     """
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, offline_mode: bool = False):
         self.api_key = api_key
+        self.offline_mode = offline_mode
         if api_key:
             genai.configure(api_key=api_key)
 
@@ -851,7 +1004,7 @@ class SynergyEngine:
 
     @retry(wait=wait_exponential(multiplier=1, min=4, max=10), stop=stop_after_attempt(3))
     def _call_llm_for_synergy(self, profiles: List[ClientProfileHub]) -> Optional[Dict[str, str]]:
-        if not self.api_key:
+        if self.offline_mode or not self.api_key:
             return self._get_mock_pitch()
 
         print("\n🤖 [Real AI] Поиск синергии между профилями через Gemini API...")
@@ -904,14 +1057,14 @@ class SynergyEngine:
         if pitch:
             print("✅ Питч коллаборации успешно сгенерирован!")
         return pitch
-
 class CalendarEngine:
     """
     Реализует "Интеллектуальный Календарь" (Часть VII.2) и декомпозицию (Часть VI.1.3).
     Превращает артефакты (сценарии) в конкретные задачи.
     """
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, offline_mode: bool = False):
         self.api_key = api_key
+        self.offline_mode = offline_mode
         if api_key:
             genai.configure(api_key=api_key)
 
@@ -930,7 +1083,7 @@ class CalendarEngine:
         """
         Декомпозирует сценарий в список задач с помощью AI.
         """
-        if not self.api_key:
+        if self.offline_mode or not self.api_key:
             return self._get_mock_tasks()
 
         print("️  Запуск Движка Календаря: AI-декомпозиция сценария в задачи...")
