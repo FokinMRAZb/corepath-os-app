@@ -1,10 +1,10 @@
-from sqlalchemy import Column, String, ForeignKey, TEXT, NUMERIC, DATE, Boolean, TIMESTAMP # Изменяем TIMESTAMPTZ на TIMESTAMP
+from sqlalchemy import Column, String, ForeignKey, TEXT, NUMERIC, DATE, Boolean, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
 
-from database import Base # Изменяем на абсолютный импорт
+from database import Base
 
 # =============================================================================
 # Модель 1: Пользователи (Users)
