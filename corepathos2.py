@@ -29,7 +29,7 @@ if __name__ == "__main__":
     """)
     
     blue_ocean_engine = BlueOceanEngine(offline_mode=OFFLINE_MODE)
-    client_profile.positioning_matrix = blue_ocean_engine.process("Текст про конкурентов...", client_profile) # type: ignore
+    client_profile.positioning_matrix = blue_ocean_engine.process("Текст про конкурентов...", client_profile)
     
     harmony_engine = HarmonyDiagnosticEngine()
     client_profile = harmony_engine.process(client_profile)
