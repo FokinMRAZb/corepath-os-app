@@ -9,3 +9,4 @@ python-jose[cryptography]
 requests
 websockets
 st-pages
+streamlit-audiorec
