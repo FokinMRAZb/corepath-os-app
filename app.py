@@ -379,14 +379,14 @@ def render_processing_overlay():
             st.markdown("<h2 style='text-align: center;'>Идет глубокий анализ...</h2>", unsafe_allow_html=True)
             st.info("Пожалуйста, подождите. Система F.O.K.I.N. обрабатывает ваши данные. Это может занять несколько минут.")
 
-            # Флаги для контроля действий после завершения обработки
+            # Временные переменные и флаги для контроля действий после завершения обработки
             should_rerun = False
             temp_profile = None
             temp_product_ladder = None
 
             with st.status("Запускаю полный цикл диагностики...", expanded=True) as status: # type: ignore
                 try:
-                    # 1. Подготовка текста
+                    # 1. Подготовка текста из опросника
                     if not st.session_state.raw_text and st.session_state.interview_answers:
                         full_text = ""
                         for block_title, questions in QUESTIONNAIRE_QUESTIONS.items():
@@ -397,7 +397,7 @@ def render_processing_overlay():
                                     full_text += f"Вопрос: {q_text}\n\n--- Начало диалога ---\n{answer}\n--- Конец диалога ---\n\n"
                         st.session_state.raw_text = full_text
 
-                    # 2. Выполнение диагностики (онлайн или оффлайн)
+                    # 2. Выполнение диагностики
                     if st.session_state.offline_mode:
                         temp_profile, temp_product_ladder = run_offline_processing(status)
                         status.update(label="✅ Диагностика завершена! Сохраняю результаты...", state="complete", expanded=False)
@@ -424,13 +424,13 @@ def render_processing_overlay():
                     if st.button("Попробовать снова"):
                         st.rerun()
 
-            # --- Действия после завершения блока st.status ---
+            # --- Действия ПОСЛЕ завершения блока st.status ---
             if should_rerun:
                 st.session_state.client_profile = temp_profile
                 st.session_state.scenario_producer = AIScenarioProducer(offline_mode=st.session_state.offline_mode)
                 st.session_state.calendar_engine = CalendarEngine(offline_mode=st.session_state.offline_mode)
                 
-                # Обновляем product_ladder только если он был сгенерирован (в оффлайн-режиме)
+                # Обновляем product_ladder только если он был сгенерирован
                 if st.session_state.offline_mode and temp_product_ladder:
                     st.session_state.client_profile.products = [asdict(p) for p in [temp_product_ladder.lead_magnet, temp_product_ladder.tripwire, temp_product_ladder.core_offer, temp_product_ladder.high_ticket] if p]
                     st.session_state.product_ladder = temp_product_ladder
